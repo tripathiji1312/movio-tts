@@ -114,6 +114,27 @@ def main():
     if not selected:
         raise SystemExit("No files fit within disk budget — free up space or increase --max-gb")
 
+    # Build expected-size map for verification
+    size_map = {rp: sz for rp, sz in matched}
+
+    # Remove any existing files that are the wrong size (partial/corrupted from prior runs)
+    corrupted = 0
+    for rpath in selected:
+        local_file = local_dir / rpath
+        if local_file.exists():
+            actual = local_file.stat().st_size
+            expected = size_map.get(rpath, actual)
+            if actual != expected:
+                local_file.unlink()
+                corrupted += 1
+    if corrupted:
+        print(f"  removed {corrupted} corrupted/partial files from prior run")
+
+    # Also clear the HF download cache metadata so it re-downloads cleaned files
+    cache_dir = local_dir / ".cache"
+    if corrupted and cache_dir.exists():
+        shutil.rmtree(cache_dir)
+
     print(f"Downloading {len(selected)} files ({cumulative / 1024**3:.1f} GB)...")
 
     # Download selected files one-by-one (with progress)

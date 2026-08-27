@@ -110,9 +110,13 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
         json.dump({"duration": durations}, f)
 
     # Build and save Arrow dataset
-    from datasets import Dataset, Audio
-    ds = Dataset.from_dict({"audio": audio_paths, "text": texts})
-    ds = ds.cast_column("audio", Audio())
+    # F5-TTS CustomDataset expects columns: audio_path, text, duration
+    from datasets import Dataset
+    ds = Dataset.from_dict({
+        "audio_path": audio_paths,
+        "text": texts,
+        "duration": durations,
+    })
     ds.save_to_disk(str(ds_dir / "raw"))
     print(f"Arrow dataset saved to: {ds_dir / 'raw'}")
 
