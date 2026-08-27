@@ -53,7 +53,7 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
         )
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", str(workdir)], check=True)
 
-    import soundfile as sf
+    import csv as csv_mod
 
     dataset_name = "movio_tanglish"
     tokenizer = "char"
@@ -62,34 +62,21 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
     ds_dir = workdir / "data" / f"{dataset_name}_{tokenizer}"
     ds_dir.mkdir(parents=True, exist_ok=True)
 
-    # Symlink audio files into wavs/ for the Arrow dataset audio paths
-    audio_dir = data_dir / "audio"
-    wavs_dir = ds_dir / "wavs"
-    wavs_dir.mkdir(exist_ok=True)
-    for wav in audio_dir.glob("*.wav"):
-        link = wavs_dir / wav.name
-        if not link.exists():
-            os.symlink(wav.resolve(), link)
-
-    # Build Arrow dataset with audio + text columns and duration.json
-    meta_csv = data_dir / "metadata.csv"
-    if not meta_csv.exists():
-        raise SystemExit("metadata.csv not found. Run 03_build_dataset.py first.")
+    # Read train.csv which already has audio paths, text, and duration
+    train_csv = data_dir / "train.csv"
+    if not train_csv.exists():
+        raise SystemExit("train.csv not found. Run 02_prepare_corpus.py first.")
 
     durations = []
     texts = []
     audio_paths = []
-    with open(meta_csv, encoding="utf-8") as f:
-        for line in f:
-            parts = line.strip().split("|")
-            if len(parts) >= 2:
-                fname, text = parts[0], parts[1]
-                wav_path = wavs_dir / fname
-                if wav_path.exists():
-                    info = sf.info(str(wav_path))
-                    durations.append(info.duration)
-                    texts.append(text)
-                    audio_paths.append(str(wav_path))
+    with open(train_csv, encoding="utf-8") as f:
+        for row in csv_mod.DictReader(f):
+            audio_path = row["audio"]
+            if Path(audio_path).exists():
+                durations.append(float(row["duration_s"]))
+                texts.append(row["text"])
+                audio_paths.append(audio_path)
 
     print(f"Building Arrow dataset: {len(texts)} utterances, "
           f"{sum(durations)/3600:.1f}h total")
