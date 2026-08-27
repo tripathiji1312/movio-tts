@@ -94,17 +94,29 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
     print(f"Building Arrow dataset: {len(texts)} utterances, "
           f"{sum(durations)/3600:.1f}h total")
 
-    # Generate vocab.txt from all unique characters in the dataset
-    all_chars = set()
+    # Use the pretrained model's vocab and extend with any new Tamil characters.
+    # The pretrained F5TTS_v1_Base uses a 2546-char vocab; we must keep it intact
+    # and append new chars so the pretrained embeddings remain aligned.
+    pretrained_vocab_path = workdir / "src" / "f5_tts" / "infer" / "examples" / "vocab.txt"
+    with open(pretrained_vocab_path, "r", encoding="utf-8") as f:
+        pretrained_vocab = [line.rstrip("\n") for line in f]
+    # First char should be space (idx 0)
+    if pretrained_vocab and pretrained_vocab[0] != " ":
+        pretrained_vocab = [" "] + pretrained_vocab
+
+    existing_chars = set(pretrained_vocab)
+    new_chars = set()
     for t in texts:
-        all_chars.update(t)
-    all_chars.discard(" ")
-    vocab = [" "] + sorted(all_chars)  # space must be idx 0
+        for ch in t:
+            if ch not in existing_chars:
+                new_chars.add(ch)
+
+    vocab = pretrained_vocab + sorted(new_chars)
     vocab_path = ds_dir / "vocab.txt"
     with open(vocab_path, "w", encoding="utf-8") as f:
         for ch in vocab:
             f.write(ch + "\n")
-    print(f"Vocab: {len(vocab)} characters -> {vocab_path}")
+    print(f"Vocab: {len(vocab)} characters ({len(new_chars)} new Tamil/Tanglish chars added) -> {vocab_path}")
 
     # Write duration.json
     with open(ds_dir / "duration.json", "w") as f:
@@ -116,6 +128,55 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
     ds = ds.cast_column("audio", Audio())
     ds.save_to_disk(str(ds_dir / "raw"))
     print(f"Arrow dataset saved to: {ds_dir / 'raw'}")
+
+    # Patch F5-TTS trainer to handle embedding size mismatch.
+    # The pretrained checkpoint has text_embed of shape [2546, 512] but our extended
+    # vocab creates [2546+N, 512]. We patch the checkpoint loading to resize the
+    # embedding tensor by padding with the mean of existing embeddings.
+    trainer_py = workdir / "src" / "f5_tts" / "model" / "trainer.py"
+    trainer_src = trainer_py.read_text()
+    patch_marker = "# MOVIO_PATCHED"
+    if patch_marker not in trainer_src:
+        # Add a helper function at the top (after imports)
+        patch_fn = '''
+# MOVIO_PATCHED
+def _resize_state_dict_embeddings(state_dict, model_state_dict):
+    """Resize text embedding weights in checkpoint to match the model's vocab size."""
+    import torch as _torch
+    for key in list(state_dict.keys()):
+        if "text_embed" in key and "weight" in key and key in model_state_dict:
+            ckpt_shape = state_dict[key].shape
+            model_shape = model_state_dict[key].shape
+            if ckpt_shape != model_shape and ckpt_shape[1] == model_shape[1]:
+                old = state_dict[key]
+                new = _torch.zeros(model_shape, dtype=old.dtype, device=old.device)
+                new[:ckpt_shape[0]] = old
+                # Init new embeddings with mean of existing
+                new[ckpt_shape[0]:] = old.mean(dim=0, keepdim=True)
+                state_dict[key] = new
+    return state_dict
+
+'''
+        # Insert after the last top-level import
+        import_end = trainer_src.rfind("\nimport ")
+        if import_end == -1:
+            import_end = trainer_src.rfind("\nfrom ")
+        insert_pos = trainer_src.index("\n", import_end + 1) + 1
+        trainer_src = trainer_src[:insert_pos] + patch_fn + trainer_src[insert_pos:]
+
+        # Patch the two load_state_dict calls to resize first
+        trainer_src = trainer_src.replace(
+            'self.ema_model.load_state_dict(checkpoint["ema_model_state_dict"])',
+            '_resize_state_dict_embeddings(checkpoint["ema_model_state_dict"], self.ema_model.state_dict())\n'
+            '            self.ema_model.load_state_dict(checkpoint["ema_model_state_dict"])',
+        )
+        trainer_src = trainer_src.replace(
+            'self.accelerator.unwrap_model(self.model).load_state_dict(checkpoint["model_state_dict"])',
+            '_resize_state_dict_embeddings(checkpoint["model_state_dict"], self.accelerator.unwrap_model(self.model).state_dict())\n'
+            '            self.accelerator.unwrap_model(self.model).load_state_dict(checkpoint["model_state_dict"])',
+        )
+        trainer_py.write_text(trainer_src)
+        print("Patched trainer.py for text embedding resize")
 
     # Run finetune CLI with correct args
     finetune_script = workdir / "src" / "f5_tts" / "train" / "finetune_cli.py"
