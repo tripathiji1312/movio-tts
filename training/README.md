@@ -14,7 +14,7 @@ boundaries (blueprint §3.5), trained on:
 
 | Source | License | Hours | Role |
 |---|---|---|---|
-| **IndicVoices-R** Tamil subset | CC-BY-4.0 | ~100–300 usable | Base adaptation |
+| **indicvoices_r** Tamil subset | CC-BY-4.0 | ~100–300 usable | Base adaptation |
 | **Custom Chennai-region recordings** (4–6 bilingual talents) | Yours | 50–100 | Tanglish switch-point prosody |
 | Optional TTS-distillation audio | — | — | Augmentation only |
 
@@ -29,7 +29,7 @@ three Tanglish forms:
 1. Request access to the gated models/datasets on Hugging Face
    (**24–48 h lead time**):
    - `ai4bharat/IndicF5`
-   - `ai4bharat/IndicVoices-R`
+   - `ai4bharat/indicvoices_r`
 2. Create an HF token (read scope): https://huggingface.co/settings/tokens
 3. On Kaggle: **Add-ons → Secrets → Add secret** → name it `HF_TOKEN`.
 4. Upload your custom Tanglish recordings as a private Kaggle Dataset
@@ -41,7 +41,7 @@ three Tanglish forms:
 
 **[`kaggle/movio_kaggle_training.ipynb`](kaggle/movio_kaggle_training.ipynb)**
 contains everything: environment checks, HF auth from secrets, git clone /
-dataset-attach of this repo, IndicVoices-R download, corpus prep, dataset
+dataset-attach of this repo, indicvoices_r download, corpus prep, dataset
 build, fine-tune, merge/export, evaluation gate, and an in-notebook
 base-vs-fine-tuned listening demo.
 
@@ -77,7 +77,7 @@ python training/scripts/06_evaluate.py \
 ## Stage details
 
 ### 01_download_data.py
-Pulls only the Tamil split of IndicVoices-R via `snapshot_download` allow-
+Pulls only the Tamil split of indicvoices_r via `snapshot_download` allow-
 patterns (keeps the download small). Requires `HF_TOKEN`.
 
 ### 02_prepare_corpus.py

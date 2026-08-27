@@ -1,10 +1,10 @@
-"""01 — Download IndicVoices-R Tamil subset (+ optional extras) on Kaggle.
+"""01 — Download indicvoices_r Tamil subset (+ optional extras) on Kaggle.
 
 Usage (Kaggle notebook cell or script):
     python training/scripts/01_download_data.py --out /kaggle/working/raw
 
 Downloads:
-  - ai4bharat/IndicVoices-R  (CC-BY-4.0) Tamil split only
+  - ai4bharat/indicvoices_r  (CC-BY-4.0) Tamil split only
 Requires: HF_TOKEN env var for gated datasets/models.
 """
 
@@ -30,9 +30,9 @@ def main():
         )
     from huggingface_hub import snapshot_download
 
-    print("Downloading IndicVoices-R (this can take a while)...")
+    print("Downloading indicvoices_r (this can take a while)...")
     path = snapshot_download(
-        repo_id="ai4bharat/IndicVoices-R",
+        repo_id="ai4bharat/indicvoices_r",
         repo_type="dataset",
         token=token,
         allow_patterns=[f"*{args.language}*", "*.json", "README.md"],

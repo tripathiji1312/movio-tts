@@ -79,7 +79,7 @@ dynamic batching 4–6, 5 ms queue delay) when you move off the FastAPI path.
 The v2 Tanglish LoRA fine-tune is a **complete Kaggle-ready pipeline** under
 [`training/`](training/README.md):
 
-1. `01_download_data.py` — IndicVoices-R Tamil subset (CC-BY-4.0)
+1. `01_download_data.py` — indicvoices_r Tamil subset (CC-BY-4.0)
 2. `02_prepare_corpus.py` — resample 24 kHz, trim, SNR/duration filter, dedupe, splits
 3. `03_build_dataset.py` — Arrow dataset + F5-TTS `metadata.csv`
 4. `04_train_lora.py` — fine-tune via SWivid/F5-TTS trainer (**recommended**) or PEFT LoRA

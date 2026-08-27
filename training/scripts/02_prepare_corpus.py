@@ -40,7 +40,7 @@ def find_transcript_pairs(raw_dir: Path):
                             wav = cand
                     if wav.exists():
                         yield wav, parts[1]
-    # Layout B: IndicVoices-R style — wav next to same-stem .json/.txt
+    # Layout B: indicvoices_r style — wav next to same-stem .json/.txt
     for wav in raw_dir.rglob("*.wav"):
         stem = wav.with_suffix("")
         transcript = None
