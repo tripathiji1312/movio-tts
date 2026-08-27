@@ -53,45 +53,98 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
         )
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", str(workdir)], check=True)
 
-    meta_src = data_dir / "metadata.csv"
-    ds_root = data_dir / "wavs"
-    ds_root.mkdir(exist_ok=True)
-    import shutil
+    import soundfile as sf
 
+    dataset_name = "movio_tanglish"
+    tokenizer = "char"
+
+    # F5-TTS expects data at: data/{dataset_name}_{tokenizer}/raw/ (Arrow) + duration.json + vocab.txt
+    ds_dir = workdir / "data" / f"{dataset_name}_{tokenizer}"
+    ds_dir.mkdir(parents=True, exist_ok=True)
+
+    # Symlink audio files into wavs/ for the Arrow dataset audio paths
     audio_dir = data_dir / "audio"
+    wavs_dir = ds_dir / "wavs"
+    wavs_dir.mkdir(exist_ok=True)
     for wav in audio_dir.glob("*.wav"):
-        link = ds_root / wav.name
+        link = wavs_dir / wav.name
         if not link.exists():
             os.symlink(wav.resolve(), link)
 
-    cfg_path = out_dir / "finetune_config.yaml"
-    cfg = f"""\
-data:
-  train: {meta_src}
-  root: {ds_root}
-model:
-  name: F5TTS_v1_Base
-  tokenizer: pinyin
-  ckpt: null
-train:
-  epochs: {epochs}
-  batch_size: {batch_size}
-  learning_rate: 1e-05
-  num_warmup_updates: 200
-  save_per_updates: 1000
-  mixed_precision: fp16
-  finetune: true
-"""
-    cfg_path.write_text(cfg)
-    print(f"F5-TTS finetune config:\n{cfg}")
+    # Build Arrow dataset with audio + text columns and duration.json
+    meta_csv = data_dir / "metadata.csv"
+    if not meta_csv.exists():
+        raise SystemExit("metadata.csv not found. Run 03_build_dataset.py first.")
+
+    durations = []
+    texts = []
+    audio_paths = []
+    with open(meta_csv, encoding="utf-8") as f:
+        for line in f:
+            parts = line.strip().split("|")
+            if len(parts) >= 2:
+                fname, text = parts[0], parts[1]
+                wav_path = wavs_dir / fname
+                if wav_path.exists():
+                    info = sf.info(str(wav_path))
+                    durations.append(info.duration)
+                    texts.append(text)
+                    audio_paths.append(str(wav_path))
+
+    print(f"Building Arrow dataset: {len(texts)} utterances, "
+          f"{sum(durations)/3600:.1f}h total")
+
+    # Generate vocab.txt from all unique characters in the dataset
+    all_chars = set()
+    for t in texts:
+        all_chars.update(t)
+    all_chars.discard(" ")
+    vocab = [" "] + sorted(all_chars)  # space must be idx 0
+    vocab_path = ds_dir / "vocab.txt"
+    with open(vocab_path, "w", encoding="utf-8") as f:
+        for ch in vocab:
+            f.write(ch + "\n")
+    print(f"Vocab: {len(vocab)} characters -> {vocab_path}")
+
+    # Write duration.json
+    with open(ds_dir / "duration.json", "w") as f:
+        json.dump({"duration": durations}, f)
+
+    # Build and save Arrow dataset
+    from datasets import Dataset, Audio
+    ds = Dataset.from_dict({"audio": audio_paths, "text": texts})
+    ds = ds.cast_column("audio", Audio())
+    ds.save_to_disk(str(ds_dir / "raw"))
+    print(f"Arrow dataset saved to: {ds_dir / 'raw'}")
+
+    # Run finetune CLI with correct args
+    finetune_script = workdir / "src" / "f5_tts" / "train" / "finetune_cli.py"
     cmd = [
-        "f5-tts", "finetune",
-        "--config", str(cfg_path),
-        "--dataset-name", "movio_tanglish",
+        sys.executable, str(finetune_script),
+        "--exp_name", "F5TTS_v1_Base",
+        "--dataset_name", dataset_name,
+        "--tokenizer", tokenizer,
+        "--epochs", str(epochs),
+        "--batch_size_per_gpu", str(batch_size * 24000 * 10),  # frames: batch * sr * ~10s
+        "--batch_size_type", "frame",
+        "--max_samples", str(batch_size),
+        "--learning_rate", "1e-5",
+        "--num_warmup_updates", "200",
+        "--save_per_updates", "1000",
+        "--last_per_updates", "500",
+        "--finetune",
     ]
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, check=True, cwd=str(workdir))
-    print(f"Checkpoints under: {workdir}/ckpts (copy final .pt into {out_dir})")
+
+    # Copy final checkpoint to output dir
+    ckpt_dir = workdir / "ckpts" / dataset_name
+    if ckpt_dir.exists():
+        import shutil
+        for pt in sorted(ckpt_dir.glob("*.pt")) + sorted(ckpt_dir.glob("*.safetensors")):
+            shutil.copy2(pt, out_dir / pt.name)
+            print(f"Copied checkpoint: {pt.name}")
+    print(f"Checkpoints in: {out_dir}")
 
 
 def list_modules(model):
