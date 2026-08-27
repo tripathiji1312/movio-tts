@@ -1,0 +1,3148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@page {
+  size: A4;
+  margin: 22mm 18mm 20mm 18mm;
+  @top-right {
+    content: "Self-Hosted Tamil / English / Tanglish TTS  •  Blueprint v1.1";
+    font-family: 'Inter', sans-serif;
+    font-size: 7px;
+    font-weight: 500;
+    color: #94A3B8;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  @bottom-center {
+    content: "Page " counter(page) " of " counter(pages);
+    font-family: 'Inter', sans-serif;
+    font-size: 7.5px;
+    color: #94A3B8;
+    letter-spacing: 0.04em;
+  }
+  @bottom-right {
+    content: "Confidential  •  August 2026";
+    font-family: 'Inter', sans-serif;
+    font-size: 7px;
+    color: #CBD5E1;
+  }
+}
+
+@page :first {
+  margin: 0;
+  @top-right { content: none; }
+  @bottom-center { content: none; }
+  @bottom-right { content: none; }
+}
+
+* { box-sizing: border-box; }
+
+html {
+  font-size: 10pt;
+}
+
+body {
+  font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 9.2pt;
+  line-height: 1.62;
+  color: #1E293B;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* COVER PAGE */
+.cover {
+  page: cover;
+  height: 297mm;
+  background: #0F172A;
+  background: linear-gradient(165deg, #0F172A 0%, #1E293B 45%, #0F2342 100%);
+  color: white;
+  padding: 42mm 22mm 28mm 22mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+.cover::before {
+  content: "";
+  position: absolute;
+  top: -60mm;
+  right: -40mm;
+  width: 140mm;
+  height: 140mm;
+  background: radial-gradient(circle, rgba(14,165,233,0.18) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.cover::after {
+  content: "";
+  position: absolute;
+  bottom: 40mm;
+  left: -30mm;
+  width: 100mm;
+  height: 100mm;
+  background: radial-gradient(circle, rgba(99,102,241,0.14) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.cover-badge {
+  display: inline-block;
+  background: rgba(14,165,233,0.15);
+  border: 1px solid rgba(14,165,233,0.35);
+  color: #7DD3FC;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 20px;
+  margin-bottom: 18px;
+}
+.cover h1 {
+  font-size: 28pt;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin: 0 0 14px 0;
+  color: white;
+}
+.cover h1 span {
+  background: linear-gradient(90deg, #38BDF8, #818CF8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.cover-subtitle {
+  font-size: 10.5pt;
+  font-weight: 400;
+  line-height: 1.55;
+  color: #CBD5E1;
+  max-width: 92%;
+  margin: 0 0 28px 0;
+}
+.cover-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.cover-meta-item {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 9px 13px;
+  min-width: 112px;
+}
+.cover-meta-label {
+  font-size: 6.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #94A3B8;
+  margin-bottom: 3px;
+}
+.cover-meta-value {
+  font-size: 8.5pt;
+  font-weight: 600;
+  color: #F1F5F9;
+}
+.cover-footer {
+  border-top: 1px solid rgba(255,255,255,0.12);
+  padding-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.cover-footer-left {
+  font-size: 7.5pt;
+  color: #94A3B8;
+  line-height: 1.5;
+}
+.cover-footer-right {
+  text-align: right;
+  font-size: 7px;
+  color: #64748B;
+  line-height: 1.6;
+}
+
+/* CONTENT WRAPPER */
+.content {
+  padding: 0;
+}
+
+/* HEADINGS */
+h1, h2, h3, h4 {
+  font-family: 'Inter', sans-serif;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+  page-break-after: avoid;
+}
+h1 {
+  font-size: 20pt;
+  font-weight: 800;
+  margin: 36px 0 8px 0;
+  padding-bottom: 10px;
+  border-bottom: 2.5px solid #0EA5E9;
+  color: #0F172A;
+}
+h2 {
+  font-size: 14pt;
+  font-weight: 750;
+  margin: 30px 0 10px 0;
+  color: #0F2342;
+  padding-bottom: 6px;
+  border-bottom: 1.2px solid #E2E8F0;
+}
+h3 {
+  font-size: 11pt;
+  font-weight: 700;
+  margin: 22px 0 8px 0;
+  color: #1E293B;
+}
+h4 {
+  font-size: 9.8pt;
+  font-weight: 700;
+  margin: 16px 0 6px 0;
+  color: #334155;
+  text-transform: none;
+  letter-spacing: -0.01em;
+}
+
+/* First h1 after cover should not have huge margin */
+.content > h1:first-of-type {
+  margin-top: 10px;
+}
+
+/* PARAGRAPHS & LISTS */
+p {
+  margin: 7px 0 9px 0;
+  orphans: 3;
+  widows: 3;
+}
+ul, ol {
+  margin: 6px 0 12px 0;
+  padding-left: 20px;
+}
+li {
+  margin: 3px 0;
+}
+li::marker {
+  color: #0EA5E9;
+}
+strong {
+  font-weight: 700;
+  color: #0F172A;
+}
+
+/* BLOCKQUOTES - callouts */
+blockquote {
+  margin: 14px 0;
+  padding: 12px 16px 12px 16px;
+  background: #F0F9FF;
+  border-left: 4px solid #0EA5E9;
+  border-radius: 0 8px 8px 0;
+  font-size: 8.8pt;
+  color: #0C4A6E;
+  line-height: 1.58;
+  page-break-inside: avoid;
+}
+blockquote p {
+  margin: 4px 0;
+}
+blockquote strong {
+  color: #0C4A6E;
+}
+
+/* TABLES */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 16px 0;
+  font-size: 7.8pt;
+  line-height: 1.45;
+  page-break-inside: auto;
+}
+thead {
+  background: #0F172A;
+}
+thead th {
+  background: #0F172A;
+  color: white;
+  font-weight: 700;
+  font-size: 7.2pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 7px;
+  text-align: left;
+  border: none;
+  white-space: nowrap;
+}
+thead th:first-child {
+  border-radius: 6px 0 0 0;
+}
+thead th:last-child {
+  border-radius: 0 6px 0 0;
+}
+tbody td {
+  padding: 6.5px 7px;
+  border-bottom: 1px solid #E2E8F0;
+  vertical-align: top;
+}
+tbody tr:nth-child(even) {
+  background: #F8FAFC;
+}
+tbody tr:last-child td:first-child {
+  border-radius: 0 0 0 6px;
+}
+tbody tr:last-child td:last-child {
+  border-radius: 0 0 6px 0;
+}
+tbody tr:hover {
+  background: #F1F5F9;
+}
+td, th {
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* CODE BLOCKS - diagrams */
+pre {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-left: 3px solid #0EA5E9;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-family: 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
+  font-size: 6.6pt;
+  line-height: 1.48;
+  color: #1E293B;
+  overflow-x: auto;
+  white-space: pre;
+  page-break-inside: avoid;
+  margin: 12px 0;
+}
+code {
+  font-family: 'JetBrains Mono', Menlo, Consolas, monospace;
+  font-size: 7.8pt;
+  background: #F1F5F9;
+  padding: 1.5px 4px;
+  border-radius: 3px;
+  border: 1px solid #E2E8F0;
+  color: #0F172A;
+}
+pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* INLINE HR */
+hr {
+  border: none;
+  height: 1.5px;
+  background: linear-gradient(90deg, #0EA5E9, #E0F2FE, transparent);
+  margin: 28px 0;
+}
+
+/* LINKS */
+a {
+  color: #0284C7;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(2,132,199,0.18);
+}
+a:hover {
+  color: #0EA5E9;
+}
+
+/* TOC styling - the markdown TOC generates a list */
+.content > ul:first-of-type {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 16px 20px 16px 28px;
+  margin: 14px 0 20px 0;
+}
+.content > ul:first-of-type li {
+  margin: 2.5px 0;
+  font-size: 8.6pt;
+}
+.content > ul:first-of-type a {
+  color: #334155;
+  border-bottom: none;
+  font-weight: 500;
+}
+.content > ul:first-of-type a:hover {
+  color: #0EA5E9;
+}
+
+/* Keep headings with following content */
+h1, h2, h3, h4 {
+  page-break-after: avoid;
+}
+table, pre, blockquote {
+  page-break-inside: avoid;
+}
+h2 + table, h3 + table {
+  page-break-before: avoid;
+}
+
+/* Force page breaks before major solutions */
+h1 {
+  page-break-before: auto;
+}
+/* Add page break before each major solution except first */
+.content h1:nth-of-type(n+2) {
+  page-break-before: always;
+}
+
+/* Executive summary table highlight */
+.content h1:first-of-type + p + table tbody tr:first-child td {
+  font-weight: 600;
+}
+
+/* Small caps for labels */
+.small-caps {
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+}
+
+/* Footnote style for appendix */
+.content > p:last-child {
+  font-size: 7.5pt;
+  color: #64748B;
+  font-style: italic;
+  text-align: center;
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid #E2E8F0;
+}
+
+/* Print adjustments */
+@media print {
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="cover">
+  <div>
+    <div class="cover-badge">● Production Blueprint  •  Verified  •  License-Clean</div>
+    <h1>Self-Hosted<br>Tamil / English /<br><span>Tanglish TTS</span></h1>
+    <p class="cover-subtitle">
+      Four verified, production-grade architectures for self-hosted Text-to-Speech<br>
+      supporting Tamil, English, and code-mixed Tanglish at <strong style="color:#7DD3FC;">≤500 ms p99 TTFA</strong> and 15–20 concurrent streams.
+      Fully self-hosted &bull; Commercially deployable &bull; No MAU / revenue gating.
+    </p>
+    <div class="cover-meta">
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Version</div>
+        <div class="cover-meta-value">v1.1 &nbsp;•&nbsp; Aug 2026</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Solutions</div>
+        <div class="cover-meta-value">4 Architectures</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Languages</div>
+        <div class="cover-meta-value">ta &nbsp;•&nbsp; en &nbsp;•&nbsp; Tanglish</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Latency Target</div>
+        <div class="cover-meta-value">p99 ≤ 500 ms</div>
+      </div>
+    </div>
+  </div>
+  <div class="cover-footer">
+    <div class="cover-footer-left">
+      <strong style="color:#E2E8F0;">Transport Voice Agent</strong> — OTP &nbsp;•&nbsp; ETA &nbsp;•&nbsp; Booking &nbsp;•&nbsp; Cancellation<br>
+      <span style="color:#94A3B8;">1× A100 + L4 + CPU pool &nbsp;•&nbsp; Triton &nbsp;•&nbsp; Redis &nbsp;•&nbsp; ONNX / FP8</span>
+    </div>
+    <div class="cover-footer-right">
+      CONFIDENTIAL<br>
+      For internal planning<br>
+      License-verified
+    </div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+<h1 id="self-hosted-tamil-english-tanglish-tts-production-architecture-blueprint">Self-Hosted Tamil / English / Tanglish TTS — Production Architecture Blueprint</h1>
+<blockquote>
+<p><strong>Four verified, license-clean, production-grade solutions for self-hosted Text-to-Speech supporting Tamil, English, and code-mixed Tanglish at ≤500ms p99 TTFA and 15–20 concurrent streams.</strong></p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Version</strong></td>
+<td>1.1</td>
+</tr>
+<tr>
+<td><strong>Date</strong></td>
+<td>August 25, 2026</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>Verified against upstream license files</td>
+</tr>
+<tr>
+<td><strong>Languages</strong></td>
+<td>Tamil (ta), English (en), Tanglish (ta-en code-mix)</td>
+</tr>
+<tr>
+<td><strong>Constraint</strong></td>
+<td>Fully self-hosted · Commercially deployable · No MAU/revenue gating</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-executive-summary">Executive Summary</a></li>
+<li><a href="#2-requirements--evaluation-criteria">Requirements &amp; Evaluation Criteria</a></li>
+<li><a href="#3-solution-1--indicf5-modular-polyglot-pipeline-recommended-production-backbone">Solution 1 — IndicF5 Modular Polyglot Pipeline (Recommended Production Backbone)</a></li>
+<li><a href="#4-solution-2--indic-parler-tts-single-backbone-end-to-end">Solution 2 — Indic Parler-TTS Single-Backbone End-to-End</a></li>
+<li><a href="#5-solution-3--hybrid-tiered-router-cost-optimized">Solution 3 — Hybrid Tiered Router (Cost-Optimized)</a></li>
+<li><a href="#6-solution-4--vits--fastspeech2-cascaded-quick-win-stack-fastest-path-to-endpoint">Solution 4 — VITS + FastSpeech2 Cascaded Quick-Win Stack (Fastest Path to Endpoint)</a></li>
+<li><a href="#7-cross-solution-comparison-all-four">Cross-Solution Comparison (All Four)</a></li>
+<li><a href="#8-decision-matrix--which-solution-to-choose">Decision Matrix — Which Solution to Choose</a></li>
+<li><a href="#9-implementation-roadmap--phased-rollout">Implementation Roadmap — Phased Rollout</a></li>
+<li><a href="#10-risks-exclusions--mitigations">Risks, Exclusions &amp; Mitigations</a></li>
+<li><a href="#11-appendices">Appendices</a></li>
+</ol>
+<hr />
+<h2 id="1-executive-summary">1. Executive Summary</h2>
+<p>This document presents <strong>four self-contained, production-grade architectures</strong> for self-hosted TTS serving Tamil, English, and Tanglish (Tamil written in Tamil script, Latin script, or mixed with English). All four meet the hard constraints of sub-500ms p99 Time-To-First-Audio (TTFA) and 15–20 concurrent streams, using only commercially permissive open-source components.</p>
+<table>
+<thead>
+<tr>
+<th>Solution</th>
+<th>Backbone</th>
+<th>Philosophy</th>
+<th>p99 TTFA (cold)</th>
+<th>Cost @ 15 concurrent</th>
+<th>Complexity</th>
+<th>Time to Deploy</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1 — IndicF5 Modular</strong></td>
+<td>IndicF5 (337M, DiT/CFM)</td>
+<td>Modular pipeline, swappable stages</td>
+<td>~435 ms</td>
+<td>~$0.0046/min</td>
+<td>Medium</td>
+<td>2–3 weeks</td>
+<td><strong>Default production backbone — lowest risk</strong></td>
+</tr>
+<tr>
+<td><strong>2 — Indic Parler-TTS</strong></td>
+<td>Indic Parler-TTS (938M, T5)</td>
+<td>Single model, prompt-controlled</td>
+<td>~475 ms</td>
+<td>~$0.0050/min</td>
+<td>Low</td>
+<td>2–3 weeks</td>
+<td>Simplicity + expressive prosody</td>
+</tr>
+<tr>
+<td><strong>3 — Hybrid Tiered</strong></td>
+<td>MeloTTS + IndicF5 + Parler + Kokoro</td>
+<td>Dynamic routing + sub-sentence caching</td>
+<td>~385 ms (tiered)</td>
+<td>~$0.0041/min</td>
+<td>High</td>
+<td>3–4 weeks</td>
+<td>Maximum cost efficiency at scale</td>
+</tr>
+<tr>
+<td><strong>4 — VITS + FastSpeech2</strong></td>
+<td>VITS (~30–80M) + FastSpeech2 (~15M) + HiFi-GAN</td>
+<td>Cascaded quick-win, deterministic</td>
+<td><strong>~190–260 ms</strong></td>
+<td><strong>~$0.0036/min</strong></td>
+<td><strong>Low</strong></td>
+<td><strong>3–5 days</strong></td>
+<td><strong>Week-one quick-win + deterministic fallback</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Recommendation — Phased rollout:</strong>
+1. <strong>Week 1:</strong> Ship <strong>Solution 4</strong> for a callable Tamil endpoint that validates the voice-agent pipeline.
+2. <strong>Weeks 3–6:</strong> Harden the production backbone with <strong>Solution 1</strong> (or Solution 2 if emotion control is required).
+3. <strong>Weeks 6–8:</strong> Evolve into <strong>Solution 3</strong>, where Solution 4&rsquo;s VITS/FastSpeech2 becomes the permanent T1/T2 deterministic tiers.</p>
+<p>All four are <strong>4–10× cheaper</strong> than commercial APIs (ElevenLabs / Cartesia / Sarvam: $0.015–$0.040/min). Solution 4 is the cheapest (~$0.0033/min at 20 concurrent) and fastest to deploy; Solutions 1–2 deliver higher naturalness (MOS 4.0–4.3 vs 3.5–3.8).</p>
+</blockquote>
+<hr />
+<h2 id="2-requirements-evaluation-criteria">2. Requirements &amp; Evaluation Criteria</h2>
+<h3 id="21-functional-requirements">2.1 Functional Requirements</h3>
+<ul>
+<li><strong>Languages:</strong> Native Tamil (Unicode: <code>உங்கள் pickup location எங்கே?</code>), Romanized Tamil / Tanglish (<code>Unga pickup location enga?</code>), English, and fluid code-mixed Tanglish.</li>
+<li><strong>Domain:</strong> Transport / ride-hailing dialogue — OTP delivery, ETA announcements, booking confirmations, cancellation handling.</li>
+<li><strong>Quality:</strong> Near-human MOS for Tamil; natural prosody at code-switch boundaries; deterministic number/date/currency verbalization.</li>
+</ul>
+<h3 id="22-non-functional-requirements">2.2 Non-Functional Requirements</h3>
+<table>
+<thead>
+<tr>
+<th>Criterion</th>
+<th>Target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Latency</strong></td>
+<td>p99 TTFA ≤ 500 ms (cold); &lt; 100 ms on cache hit</td>
+</tr>
+<tr>
+<td><strong>Concurrency</strong></td>
+<td>15–20 simultaneous streams, sustained</td>
+</tr>
+<tr>
+<td><strong>Hosting</strong></td>
+<td>Fully self-hosted; no third-party API dependency at inference</td>
+</tr>
+<tr>
+<td><strong>License</strong></td>
+<td>Apache 2.0 / MIT / BSD / CC-BY only — no NC, no MAU thresholds, no revenue-share gating</td>
+</tr>
+<tr>
+<td><strong>Cost</strong></td>
+<td>Materially below commercial $0.015–$0.040/min</td>
+</tr>
+<tr>
+<td><strong>Time-to-value</strong></td>
+<td>Working endpoint in days (Solution 4) to weeks (Solutions 1–3)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-evaluation-dimensions">2.3 Evaluation Dimensions</h3>
+<p>Each solution is scored on: license cleanliness, Tamil naturalness, Tanglish handling, latency headroom, cost per audio-minute, operational complexity, time-to-deploy, and scalability.</p>
+<hr />
+<h2 id="3-solution-1-indicf5-modular-polyglot-pipeline-recommended-production-backbone">3. Solution 1 — IndicF5 Modular Polyglot Pipeline (Recommended Production Backbone)</h2>
+<h3 id="31-overview-rationale">3.1 Overview &amp; Rationale</h3>
+<p><strong>IndicF5</strong> is the only open-source model that simultaneously satisfies four hard constraints:</p>
+<ol>
+<li><strong>Native Tamil</strong> trained on real Indic speech (not synthetic).</li>
+<li><strong>Apache 2.0 license</strong> — commercially usable without MAU thresholds.</li>
+<li><strong>Compact (337M parameters)</strong> — 3 replicas per A100, enabling 15–20 concurrent streams.</li>
+<li><strong>Flow-matching DiT architecture</strong> — supports chunked streaming for sub-500ms TTFA.</li>
+</ol>
+<p>Trained on <strong>1,417 hours</strong> of high-quality speech pooled from Rasa, IndicTTS, LIMMITS, and IndicVoices-R across <strong>11 Indian languages</strong> (including Tamil), with near-human quality reported by AI4Bharat.</p>
+<p>The <strong>modular design</strong> isolates text normalization, language routing, acoustic synthesis, and vocoding — each stage independently optimizable, swappable, and scalable. This is the <strong>lowest-risk production backbone</strong>.</p>
+<h3 id="32-license-audit">3.2 License Audit</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Role</th>
+<th>License</th>
+<th>Commercial Use</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>IndicF5</strong> (<code>ai4bharat/IndicF5</code>)</td>
+<td>Acoustic backbone</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>Gated on Hugging Face; access approval typically 24–48h</td>
+</tr>
+<tr>
+<td><strong>IndicVoices-R</strong> (1,704h, 22 langs)</td>
+<td>Tamil training data</td>
+<td>CC-BY-4.0</td>
+<td>✅ Yes</td>
+<td>Primary Tamil corpus</td>
+</tr>
+<tr>
+<td><strong>Rasa dataset</strong></td>
+<td>Expressive Tamil fine-tune</td>
+<td>Gated research</td>
+<td>⚠️ Verify</td>
+<td>Tamil expressive subset</td>
+</tr>
+<tr>
+<td><strong>IndicTTS Tamil</strong> (~20h, 48kHz studio)</td>
+<td>Pretrain data</td>
+<td>CC-BY</td>
+<td>⚠️ Verify</td>
+<td>Studio-quality Tamil</td>
+</tr>
+<tr>
+<td><strong>LIMMITS</strong></td>
+<td>Multi-speaker Indic</td>
+<td>Research release</td>
+<td>⚠️ Verify</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Vocos</strong> vocoder</td>
+<td>Fast neural vocoder (fallback)</td>
+<td>MIT</td>
+<td>✅ Yes</td>
+<td>Single-pass Fourier synthesis</td>
+</tr>
+<tr>
+<td><strong>indic-text-normalization</strong> (Kenpath)</td>
+<td>WFST normalizer</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>19 Indian languages, Pynini-based</td>
+</tr>
+<tr>
+<td><strong>NeMo <code>nemo_text_processing</code></strong></td>
+<td>ITN fallback</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>Deterministic + context-aware modes</td>
+</tr>
+<tr>
+<td><strong>IndicLID</strong> (ai4bharat)</td>
+<td>Language ID (47 classes)</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>First LID for romanized Indic text</td>
+</tr>
+<tr>
+<td><strong>IndicXlit</strong> (ai4bharat, ~11M)</td>
+<td>Transliteration (21 langs)</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>Trained on Aksharantar (26M pairs)</td>
+</tr>
+<tr>
+<td><strong>Triton Inference Server</strong></td>
+<td>Serving</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>Decoupled streaming via gRPC</td>
+</tr>
+<tr>
+<td><strong>vLLM-Omni</strong></td>
+<td>Continuous batching</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>F5-TTS support pending merge</td>
+</tr>
+<tr>
+<td><strong>TensorRT-LLM</strong></td>
+<td>FP8 quantization</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>UTMOS</strong></td>
+<td>Objective MOS</td>
+<td>MIT</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>whisper-tamil</strong> (<code>vasista22</code>)</td>
+<td>Tamil WER evaluation</td>
+<td>MIT</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>MANGO dataset</strong></td>
+<td>Tamil human MOS (246K ratings)</td>
+<td>CC-BY</td>
+<td>✅ Yes</td>
+<td>Evaluation benchmark</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Verdict:</strong> Core serving path (IndicF5 + Vocos + WFST + IndicLID/Xlit + Triton) is fully Apache 2.0 / MIT clean.</p>
+</blockquote>
+<h3 id="33-architecture-components">3.3 Architecture — Components</h3>
+<h4 id="acoustic-backbone-indicf5">Acoustic Backbone — IndicF5</h4>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Architecture</strong></td>
+<td>Conditional Flow Matching (CFM) with Diffusion Transformer (DiT) + ConvNeXt-v2 backbone; mel-spectrogram infilling (F5-TTS family)</td>
+</tr>
+<tr>
+<td><strong>Parameters</strong></td>
+<td>~337M (confirmed via Vāgdhenu distillation paper)</td>
+</tr>
+<tr>
+<td><strong>Training Data</strong></td>
+<td>1,417h from Rasa + IndicTTS + LIMMITS + IndicVoices-R</td>
+</tr>
+<tr>
+<td><strong>Languages</strong></td>
+<td>11 — Assamese, Bengali, Gujarati, Hindi, Kannada, Malayalam, Marathi, Odia, Punjabi, <strong>Tamil</strong>, Telugu</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>24 kHz mel-spectrogram → built-in vocoder → waveform</td>
+</tr>
+<tr>
+<td><strong>Serving</strong></td>
+<td>Native PyTorch; F5-TTS streaming with Sway Sampling; production via Triton Python backend (<code>decoupled: True</code>)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="vocoder-fallback-vocos-mit">Vocoder Fallback — Vocos (MIT)</h4>
+<p>Single forward-pass Fourier coefficient generation. Faster than HiFi-GAN at comparable quality. Activated only if the built-in vocoder bottlenecks on a replica.</p>
+<h4 id="text-normalization-indic-text-normalization-nemo">Text Normalization — indic-text-normalization + NeMo</h4>
+<ul>
+<li><strong>WFST-based</strong> (Pynini), deterministic, low-latency; covers 19 languages.</li>
+<li>Pipeline: Tokenization → Classification (semiotic class) → Verbalization → Post-processing.</li>
+<li>Handles Arabic digits, Tamil native digits (௦–௯), and mixed-script input.</li>
+<li><strong>Fallback:</strong> NeMo <code>nemo_text_processing</code> for context-aware disambiguation (e.g., &ldquo;St.&rdquo; → Saint vs. Street).</li>
+<li><strong>Domain rules:</strong> OTP, phone numbers, time, vehicle IDs, currency.</li>
+</ul>
+<h4 id="tanglish-router-indiclid-indicxlit">Tanglish Router — IndicLID + IndicXlit</h4>
+<ul>
+<li><strong>IndicLID:</strong> Two-stage classifier (fast linear + LM-finetuned), 47 classes (24 native-script + 21 romanized + English + Others).</li>
+<li><strong>IndicXlit:</strong> Transformer (~11M), Roman ↔ native transliteration for 21 languages (Aksharantar).</li>
+</ul>
+<h3 id="34-end-to-end-pipeline-latency-budget">3.4 End-to-End Pipeline &amp; Latency Budget</h3>
+<pre class="codehilite"><code>┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE A — Context-Aware Text Normalization             (~70 ms)    │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ WFST normalizer  │→ │ Domain rule eng.  │→ │ Abbreviation     │  │
+│  │ (Pynini, 19 lng) │  │ (OTP, phone, ID,  │  │ gazetteer        │  │
+│  │ numbers/dates/$  │  │ time, vehicle)    │  │ (Chennai Central)│  │
+│  └──────────────────┘  └──────────────────┘  └────────┬─────────┘  │
+└───────────────────────────────────────────────────────┼──────────┘
+                                                          ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE B — Tanglish Router                              (~35 ms)    │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ IndicLID token-  │→ │ IndicXlit: Latin │→ │ &lt;cs&gt; boundary    │  │
+│  │ level classify   │  │ Tamil→Tamil Uni. │  │ mark + gazetteer │  │
+│  │ (47 classes)     │  │ (English kept)   │  │ proper-noun keep │  │
+│  └──────────────────┘  └──────────────────┘  └────────┬─────────┘  │
+└───────────────────────────────────────────────────────┼──────────┘
+                                                          ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE C — Acoustic Backbone (IndicF5, FP8)            (~280 ms)   │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ Text → phoneme/  │→ │ Chunked CFM DiT  │→ │ Sway Sampling    │  │
+│  │ grapheme embed   │  │ (10-14 flow steps)│  │ (first mel chunk)│  │
+│  └──────────────────┘  └──────────────────┘  └────────┬─────────┘  │
+└───────────────────────────────────────────────────────┼──────────┘
+                                                          ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE D — Vocoder + Streaming                         (~50 ms)    │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ Built-in vocoder│→ │ 50ms PCM/Opus     │→ │ Triton decoupled │  │
+│  │ or Vocos (MIT)  │  │ chunks, cross-fade│  │ gRPC stream      │  │
+│  └──────────────────┘  └──────────────────┘  └────────┬─────────┘  │
+└───────────────────────────────────────────────────────┼──────────┘
+                                                          ▼
+                                               WebSocket → Voice Agent
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Component</th>
+<th>p99 Latency</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A</strong></td>
+<td>Text Normalization</td>
+<td>70 ms</td>
+<td>WFST &lt;1ms + rules ~20ms + abbreviations ~40ms</td>
+</tr>
+<tr>
+<td><strong>B</strong></td>
+<td>Tanglish Router</td>
+<td>35 ms</td>
+<td>LID ~10ms + Xlit ~20ms + boundary logic ~5ms</td>
+</tr>
+<tr>
+<td><strong>C</strong></td>
+<td>IndicF5 First Chunk</td>
+<td>280 ms</td>
+<td>10–14 flow steps, Sway Sampling, FP8, batched</td>
+</tr>
+<tr>
+<td><strong>D</strong></td>
+<td>Vocoder + Network</td>
+<td>50 ms</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Total TTFA (cold)</strong></td>
+<td></td>
+<td><strong>~435 ms</strong></td>
+<td><strong>65 ms headroom vs 500 ms budget</strong></td>
+</tr>
+<tr>
+<td><strong>Total TTFA (cache hit)</strong></td>
+<td></td>
+<td><strong>~155 ms</strong></td>
+<td>Stage C replay from Redis (~30 ms)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="35-tanglish-strategy-script-unified-routing">3.5 Tanglish Strategy — Script-Unified Routing</h3>
+<p>The router converts all three Tanglish input forms into a single script representation the polyglot model handles natively:</p>
+<ol>
+<li><strong>Token-level LID</strong> — IndicLID classifies each token as <code>ta_native</code>, <code>ta_roman</code>, <code>en</code>, or <code>proper_noun</code>.</li>
+<li><strong>Transliteration</strong> — Latin-Tamil tokens mapped to Tamil Unicode via IndicXlit (<code>Unga</code> → <code>உங்க</code>).</li>
+<li><strong>English preservation</strong> — English tokens kept in Latin script; IndicF5&rsquo;s polyglot training (IndicVoices-R includes English-Indic code-mix) handles them natively.</li>
+<li><strong><code>&lt;cs&gt;</code> boundary tokens</strong> — Inserted at language transitions to condition prosody, adapted from code-switching research showing single-script bilingual training with explicit boundary marking outperforms naive concatenation.</li>
+<li><strong>Proper-noun gazetteer</strong> — Names like &ldquo;Chennai Central&rdquo;, &ldquo;Ola&rdquo;, &ldquo;Uber&rdquo; preserved in Latin to activate the English phoneme path.</li>
+</ol>
+<blockquote>
+<p><strong>v1:</strong> No separate code-mixed fine-tune required — router + implicit code-mix exposure is sufficient.
+<strong>v2 (recommended):</strong> LoRA fine-tune on 50–100h of curated Tanglish audio for production-grade prosody at switch points.</p>
+</blockquote>
+<h3 id="36-inference-serving">3.6 Inference &amp; Serving</h3>
+<table>
+<thead>
+<tr>
+<th>Technique</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Continuous Batching</strong></td>
+<td>vLLM-Omni <code>DiffusionEngine</code> with <code>step_execution</code> + request-level batching. Until F5-TTS support is GA, use <strong>Triton Python backend with manual micro-batching</strong> (batch 4–6 per replica). PagedAttention for the text encoder stage.</td>
+</tr>
+<tr>
+<td><strong>Quantization</strong></td>
+<td>FP8 per-tensor + FP8 KV cache via TensorRT-LLM on Ada/Hopper. ~2× throughput, ~50% VRAM. Vocoder stays in FP16.</td>
+</tr>
+<tr>
+<td><strong>Speculative / Distilled Decoding</strong></td>
+<td>IndicF5-tiny (~50M, depth-pruned) as draft model per staged depth-pruning recipe. Analog for CFM: fewer flow steps + Sway Sampling + distillation. 2–3× speedup when AR variant is used.</td>
+</tr>
+<tr>
+<td><strong>Chunked Streaming</strong></td>
+<td>Text split into 8–12 syllable chunks at clause boundaries (preserves prosody units). Each chunk independently flow-matched; cross-faded in vocoder.</td>
+</tr>
+<tr>
+<td><strong>Caching</strong></td>
+<td>Redis hash on normalized sub-sentence strings. Transport domain has 30–40% boilerplate (&ldquo;Your driver is arriving&rdquo;, &ldquo;Please share your OTP&rdquo;) → cache hit drives TTFA to &lt;50 ms.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="37-hardware-deployment">3.7 Hardware &amp; Deployment</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Hardware</th>
+<th>Replicas</th>
+<th>VRAM / Replica</th>
+<th>Concurrency / Replica</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IndicF5 (FP8)</td>
+<td>A100 40GB</td>
+<td>3</td>
+<td>~2.5 GB</td>
+<td>5–6</td>
+</tr>
+<tr>
+<td>IndicF5 (FP8)</td>
+<td>L4 24GB (overflow)</td>
+<td>2</td>
+<td>~2.5 GB</td>
+<td>3–4</td>
+</tr>
+<tr>
+<td>Vocoder (Vocos)</td>
+<td>Shared A100</td>
+<td>1</td>
+<td>&lt;1 GB</td>
+<td>—</td>
+</tr>
+<tr>
+<td>IndicLID + IndicXlit</td>
+<td>CPU pool (8 vCPU)</td>
+<td>2</td>
+<td>RAM only</td>
+<td>20</td>
+</tr>
+<tr>
+<td>TTN (WFST)</td>
+<td>CPU pool</td>
+<td>2</td>
+<td>RAM only</td>
+<td>20</td>
+</tr>
+<tr>
+<td>Redis cache</td>
+<td>8 GB RAM</td>
+<td>1</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Total footprint:</strong> 1× A100 40GB + 1× L4 24GB + CPU pool ≈ <strong>$3.00/h blended</strong>
+Sustainable throughput at 15–20 concurrent: <strong>~650–800 audio-min/hour → ~$0.004/min</strong></p>
+<h3 id="38-cost-analysis">3.8 Cost Analysis</h3>
+<table>
+<thead>
+<tr>
+<th>Concurrency</th>
+<th>Audio-min / hour</th>
+<th>Infra $/h</th>
+<th>$ / min</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>~50</td>
+<td>$3.00</td>
+<td>$0.060</td>
+<td>Underutilized</td>
+</tr>
+<tr>
+<td>5</td>
+<td>~250</td>
+<td>$3.00</td>
+<td>$0.012</td>
+<td>30% cache hit</td>
+</tr>
+<tr>
+<td>10</td>
+<td>~450</td>
+<td>$3.00</td>
+<td>$0.0067</td>
+<td>35% cache hit</td>
+</tr>
+<tr>
+<td>15</td>
+<td>~650</td>
+<td>$3.00</td>
+<td>$0.0046</td>
+<td>40% cache hit</td>
+</tr>
+<tr>
+<td>20</td>
+<td>~800</td>
+<td>$3.50</td>
+<td>$0.0044</td>
+<td>Near saturation, CPU scales</td>
+</tr>
+</tbody>
+</table>
+<p><strong>vs. Commercial APIs ($0.015–$0.040/min): 4–9× cheaper at 15–20 concurrent.</strong></p>
+<h3 id="39-strengths-weaknesses">3.9 Strengths &amp; Weaknesses</h3>
+<table>
+<thead>
+<tr>
+<th>Strengths</th>
+<th>Weaknesses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>✅ Fully license-clean (Apache 2.0 / MIT)</td>
+<td>⚠️ Tanglish naturalness initially depends on router unification; dedicated LoRA needed for v2</td>
+</tr>
+<tr>
+<td>✅ Native Tamil from 1,417h of real speech</td>
+<td>⚠️ vLLM-Omni F5-TTS support pending — Triton micro-batching interim</td>
+</tr>
+<tr>
+<td>✅ 337M → 3 replicas/A100 → direct 15–20 concurrent path</td>
+<td>⚠️ Gated on HF — requires access request (24–48h)</td>
+</tr>
+<tr>
+<td>✅ Modular — each stage independently swappable</td>
+<td>⚠️ Reported number-pronunciation edge cases — must patch in TTN layer</td>
+</tr>
+<tr>
+<td>✅ Sub-sentence cache → 30–40% requests at &lt;50ms TTFA</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="310-when-to-choose-this-solution">3.10 When to Choose This Solution</h3>
+<p>Choose Solution 1 when the priority is <strong>lowest risk + lowest cost + license cleanliness</strong> as a production backbone. Ideal for teams that want a defensible architecture with no legal ambiguity, incremental optimizability, and a clear path to Tanglish v2 via LoRA.</p>
+<hr />
+<h2 id="4-solution-2-indic-parler-tts-single-backbone-end-to-end">4. Solution 2 — Indic Parler-TTS Single-Backbone End-to-End</h2>
+<h3 id="41-overview-rationale">4.1 Overview &amp; Rationale</h3>
+<p><strong>Indic Parler-TTS</strong> is the most expressive open-source Indic TTS — a <strong>938M-parameter T5-based</strong> model fine-tuned from Parler-TTS Mini on <strong>1,806 hours</strong> of multilingual Indic + English data, covering <strong>21 languages including Tamil</strong>. Its differentiator is <strong>natural-language description prompting</strong>: speaker identity, emotion, and prosody are controlled via a text prompt (e.g., <em>&ldquo;A female Tamil support agent, calm and professional, naturally code-switching between Tamil and English&rdquo;</em>), without reference audio.</p>
+<p>Single-backbone = one model, one serving path, one fine-tune. Operationally far simpler than Solution 1, at the cost of a larger model requiring more aggressive quantization.</p>
+<h3 id="42-license-audit">4.2 License Audit</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Role</th>
+<th>License</th>
+<th>Commercial Use</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Indic Parler-TTS</strong> (<code>ai4bharat/indic-parler-tts</code>)</td>
+<td>Single acoustic backbone</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>Gated on HF — verify terms or use ungated mirror</td>
+</tr>
+<tr>
+<td><strong>Indic Parler-TTS Pretrained</strong></td>
+<td>Base for fine-tune</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Parler-TTS</strong> (huggingface/parler-tts)</td>
+<td>Base framework</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>GLOBE-annotated dataset</strong></td>
+<td>Pretrain data</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>IndicVoices-R</strong></td>
+<td>Tamil fine-tune data</td>
+<td>CC-BY-4.0</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Parler-TTS inference library</strong></td>
+<td>Serving</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>vLLM</strong></td>
+<td>Continuous batching (T5)</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>Native T5 support</td>
+</tr>
+<tr>
+<td><strong>Triton Inference Server</strong></td>
+<td>Streaming gRPC</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>TensorRT-LLM</strong></td>
+<td>FP8 quantization</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>UTMOS / NISQA</strong></td>
+<td>Objective MOS</td>
+<td>MIT</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>MANGO</strong></td>
+<td>Tamil human MOS</td>
+<td>CC-BY</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Whisper Tamil</strong></td>
+<td>WER eval</td>
+<td>MIT</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>License caution:</strong> Gated on Hugging Face. For commercial deployment, either (a) request gated access and confirm with AI4Bharat in writing, or (b) use the verified ungated Apache 2.0 mirror.</p>
+</blockquote>
+<h3 id="43-architecture-components">4.3 Architecture — Components</h3>
+<h4 id="single-acoustic-backbone-indic-parler-tts">Single Acoustic Backbone — Indic Parler-TTS</h4>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Architecture</strong></td>
+<td>T5 encoder-decoder with cross-attention to a natural-language description prompt (Natural Language Guidance of High-Fidelity TTS)</td>
+</tr>
+<tr>
+<td><strong>Parameters</strong></td>
+<td>~938M</td>
+</tr>
+<tr>
+<td><strong>Training</strong></td>
+<td>Fine-tuned from <code>indic-parler-tts-pretrained</code> on 1,806h multilingual Indic + English</td>
+</tr>
+<tr>
+<td><strong>Languages</strong></td>
+<td>21 — Assamese, Bodo, Dogri, English, Gujarati, Hindi, Kannada, Konkani, Maithili, Malayalam, Manipuri, Marathi, Nepali, Odia, Sanskrit, Santali, Sindhi, <strong>Tamil</strong>, Telugu, Urdu</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>30s max per generation — chunking required for longer inputs</td>
+</tr>
+<tr>
+<td><strong>Prompt Control</strong></td>
+<td>NL description conditions speaker, emotion, and prosody</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why no separate Tanglish router:</strong> The training distribution includes Hinglish/Tanglish-style fluid code-switching. The NL prompt explicitly directs code-switching behavior, and a LoRA fine-tune teaches the actual switch patterns — the most &ldquo;novel&rdquo; approach among the four.</p>
+<h3 id="44-end-to-end-pipeline-latency-budget">4.4 End-to-End Pipeline &amp; Latency Budget</h3>
+<pre class="codehilite"><code>┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE A — Context-Aware Text Normalization             (~70 ms)   │
+│  (Identical WFST + domain rules as Solution 1)                       │
+└─────────────────────────────────────────┬───────────────────────────┘
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE B — Prompt Encoder                                (~15 ms)   │
+│  ┌──────────────────┐  ┌──────────────────┐                         │
+│  │ Dialogue context │→ │ NL description   │                         │
+│  │ → prompt template│  │ + normalized text │                         │
+│  └──────────────────┘  └────────┬─────────┘                         │
+└───────────────────────────────────┼──────────────────────────────────┘
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE C — Indic Parler-TTS (FP8, vLLM batched)         (~330 ms)  │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ T5 encoder       │→ │ AR decoder with  │→ │ First audio codec │  │
+│  │ (text + prompt)  │  │ paged attention  │  │ token stream      │  │
+│  └──────────────────┘  └──────────────────┘  └────────┬─────────┘  │
+└───────────────────────────────────────────────────────┼──────────┘
+                                                          ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE D — Codec Decode + Streaming                     (~60 ms)   │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ Codec → waveform │→ │ 50ms Opus chunks │→ │ Triton decoupled  │  │
+│  │ (DAC/EnCodec)    │  │                  │  │ gRPC              │  │
+│  └──────────────────┘  └──────────────────┘  └────────┬─────────┘  │
+└───────────────────────────────────────────────────────┼──────────┘
+                                                          ▼
+                                               WebSocket → Voice Agent
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Component</th>
+<th>p99 Latency</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A</strong></td>
+<td>Text Normalization</td>
+<td>70 ms</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>B</strong></td>
+<td>Prompt Encoder</td>
+<td>15 ms</td>
+<td>Dialogue context → NL template</td>
+</tr>
+<tr>
+<td><strong>C</strong></td>
+<td>Parler-TTS First Token</td>
+<td>330 ms</td>
+<td>AR decoder, FP8, vLLM continuous batching</td>
+</tr>
+<tr>
+<td><strong>D</strong></td>
+<td>Codec + Stream</td>
+<td>60 ms</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Total TTFA (cold)</strong></td>
+<td></td>
+<td><strong>~475 ms</strong></td>
+<td>Tight but within 500 ms; sub-500ms TTFA confirmed in Parler-TTS docs</td>
+</tr>
+<tr>
+<td><strong>Total TTFA (cache hit)</strong></td>
+<td></td>
+<td><strong>~180 ms</strong></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h3 id="45-tanglish-strategy-lora-fine-tune">4.5 Tanglish Strategy — LoRA Fine-Tune</h3>
+<p>A LoRA fine-tune is <strong>mandatory</strong> for production Tanglish quality:</p>
+<p><strong>1. Corpus Construction (~50–100h)</strong></p>
+<ul>
+<li>Hire 4–6 native Chennai-region Tamil-English bilingual voice talents.</li>
+<li>Script ~2,000 transport-domain dialogues covering all three Tanglish forms:</li>
+<li>(a) Tamil Unicode + Latin English: <code>உங்கள் pickup location எங்கே?</code></li>
+<li>(b) Latin-Tamil + Latin English: <code>Unga pickup location enga?</code></li>
+<li>(c) Mixed proper nouns: <code>Chennai Central-ல இருக்கா?</code></li>
+<li>Record at 48 kHz studio quality.</li>
+<li>Optionally augment with TTS-distilled data from a high-quality commercial reference (training signal only, never served).</li>
+</ul>
+<p><strong>2. LoRA Configuration</strong></p>
+<ul>
+<li>Rank 16–32 on cross-attention layers (prompt-conditioning layers).</li>
+<li>Trainable params &lt;30M; training &lt;24 GPU-hours on A100.</li>
+<li>Preserves monolingual Tamil/English quality (avoids catastrophic forgetting).</li>
+</ul>
+<p><strong>3. Evaluation</strong></p>
+<ul>
+<li>MANGO Tamil subset (246K human ratings) + custom 200-utterance Tanglish test set + UTMOS objective MOS.</li>
+</ul>
+<p>The fine-tune teaches Chennai-region Tanglish prosody; the NL prompt activates it at inference.</p>
+<h3 id="46-inference-serving">4.6 Inference &amp; Serving</h3>
+<table>
+<thead>
+<tr>
+<th>Technique</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Continuous Batching</strong></td>
+<td>Native T5 support in vLLM — paged attention, no tokenization hacks. <code>max_num_seqs</code> tuned to 8–12 on A100 40GB.</td>
+</tr>
+<tr>
+<td><strong>Quantization</strong></td>
+<td>FP8 → ~940 MB VRAM → ~8 replicas on A100 40GB → 15–20 concurrent with margin. FP8 KV cache via TensorRT-LLM.</td>
+</tr>
+<tr>
+<td><strong>Streaming</strong></td>
+<td>Token-by-token audio streaming; Triton decoupled gRPC for transport.</td>
+</tr>
+<tr>
+<td><strong>Speculative Decoding</strong></td>
+<td>VADUSA-style: distilled Parler-TTS-tiny (~150M) as draft model → 2–3× AR speedup, distribution-preserving.</td>
+</tr>
+<tr>
+<td><strong>Long Utterances</strong></td>
+<td>Chunking required (30s max per generation).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="47-hardware-deployment">4.7 Hardware &amp; Deployment</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Hardware</th>
+<th>Replicas</th>
+<th>VRAM / Replica</th>
+<th>Concurrency / Replica</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Indic Parler-TTS (FP8)</td>
+<td>A100 40GB</td>
+<td>4</td>
+<td>~2 GB</td>
+<td>4–5</td>
+</tr>
+<tr>
+<td>Codec decoder (DAC)</td>
+<td>Shared A100</td>
+<td>1</td>
+<td>&lt;1 GB</td>
+<td>—</td>
+</tr>
+<tr>
+<td>TTN + Prompt Encoder</td>
+<td>CPU pool (8 vCPU)</td>
+<td>2</td>
+<td>RAM only</td>
+<td>20</td>
+</tr>
+<tr>
+<td>Redis cache</td>
+<td>8 GB RAM</td>
+<td>1</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Total footprint:</strong> 1× A100 40GB + CPU pool ≈ <strong>$2.50/h</strong>
+Sustainable throughput at 15–20 concurrent: <strong>~400–550 audio-min/hour → ~$0.005–0.006/min</strong></p>
+<h3 id="48-cost-analysis">4.8 Cost Analysis</h3>
+<table>
+<thead>
+<tr>
+<th>Concurrency</th>
+<th>Audio-min / hour</th>
+<th>Infra $/h</th>
+<th>$ / min</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>~45</td>
+<td>$2.50</td>
+<td>$0.056</td>
+<td>Underutilized</td>
+</tr>
+<tr>
+<td>5</td>
+<td>~220</td>
+<td>$2.50</td>
+<td>$0.011</td>
+<td>30% cache hit</td>
+</tr>
+<tr>
+<td>10</td>
+<td>~400</td>
+<td>$2.50</td>
+<td>$0.0063</td>
+<td>35% cache hit</td>
+</tr>
+<tr>
+<td>15</td>
+<td>~500</td>
+<td>$2.50</td>
+<td>$0.0050</td>
+<td>40% cache hit</td>
+</tr>
+<tr>
+<td>20</td>
+<td>~600</td>
+<td>$3.00</td>
+<td>$0.0050</td>
+<td>Near saturation, CPU scales</td>
+</tr>
+</tbody>
+</table>
+<p>Slightly higher per-minute cost than Solution 1 (~$0.0050 vs $0.0046 at 15 concurrent) but operationally simpler.</p>
+<h3 id="49-strengths-weaknesses">4.9 Strengths &amp; Weaknesses</h3>
+<table>
+<thead>
+<tr>
+<th>Strengths</th>
+<th>Weaknesses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>✅ Simplest ops — one model, one path, one fine-tune</td>
+<td>⚠️ Larger model (938M) → higher per-request latency</td>
+</tr>
+<tr>
+<td>✅ NL prompt control of emotion/prosody (calm for cancellations, upbeat for confirmations)</td>
+<td>⚠️ Code-mix is implicit — harder to guarantee Tanglish naturalness</td>
+</tr>
+<tr>
+<td>✅ Most novel — emergent code-mixing from a single LM</td>
+<td>⚠️ Gated on HF — verify commercial terms</td>
+</tr>
+<tr>
+<td>✅ Apache 2.0</td>
+<td>⚠️ 30s max generation → chunking logic required</td>
+</tr>
+<tr>
+<td></td>
+<td>⚠️ Higher $/min than Solution 1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="410-when-to-choose-this-solution">4.10 When to Choose This Solution</h3>
+<p>Choose Solution 2 when <strong>operational simplicity and expressive control</strong> outweigh absolute minimum cost. Ideal for teams with strong MLOps but limited low-level inference engineering, and for contact-center use cases where tone adaptation (calm / upbeat / apologetic) is a product requirement.</p>
+<hr />
+<h2 id="5-solution-3-hybrid-tiered-router-cost-optimized">5. Solution 3 — Hybrid Tiered Router (Cost-Optimized)</h2>
+<h3 id="51-overview-rationale">5.1 Overview &amp; Rationale</h3>
+<p>When <strong>absolute $/min is the dominant KPI</strong>, a single-model architecture is suboptimal: expensive expressive models are invoked even for trivial boilerplate (&ldquo;Your OTP is 4821&rdquo;) that a tiny model could handle.</p>
+<p>Solution 3 deploys a <strong>dynamic request router</strong> that classifies each utterance and dispatches to the cheapest tier that can serve it with acceptable quality:</p>
+<ul>
+<li><strong>MeloTTS on CPU</strong> for hot boilerplate → ~$0.50/h for 8 vCPUs</li>
+<li><strong>IndicF5 on GPU</strong> for standard Tamil/Tanglish</li>
+<li><strong>Indic Parler-TTS</strong> only for long-form emotional Tanglish</li>
+<li><strong>Kokoro-82M</strong> for pure-English fragments</li>
+</ul>
+<p>Combined with <strong>sub-sentence audio caching</strong> (cache prefix/suffix, synthesize only the variable slot), this drives <strong>40–60% of requests to sub-100ms TTFA at near-zero marginal cost</strong>. The trade-off is operational complexity of four models.</p>
+<h3 id="52-license-audit">5.2 License Audit</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Role</th>
+<th>License</th>
+<th>Commercial Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>MeloTTS</strong> (myshell-ai)</td>
+<td>T1 hot CPU tier</td>
+<td><strong>MIT</strong></td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><strong>IndicF5</strong> (ai4bharat)</td>
+<td>T2 standard GPU tier</td>
+<td>Apache 2.0 (gated)</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><strong>Indic Parler-TTS</strong> (ai4bharat)</td>
+<td>T3 expressive GPU tier</td>
+<td>Apache 2.0 (gated)</td>
+<td>✅ Yes (verify)</td>
+</tr>
+<tr>
+<td><strong>Kokoro-82M</strong> (hexgrad)</td>
+<td>English-fragment tier</td>
+<td><strong>Apache 2.0</strong></td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><strong>Vocos</strong></td>
+<td>Fallback vocoder</td>
+<td>MIT</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><strong>indic-text-normalization</strong></td>
+<td>WFST TTN</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><strong>IndicLID / IndicXlit</strong></td>
+<td>LID + transliteration</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><strong>Triton</strong></td>
+<td>Serving</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><strong>vLLM-Omni</strong></td>
+<td>Batching</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><strong>TensorRT-LLM</strong></td>
+<td>FP8 quant</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><strong>UTMOS / NISQA / MANGO</strong></td>
+<td>Evaluation</td>
+<td>MIT / CC-BY</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><strong>Redis</strong></td>
+<td>Cache</td>
+<td>BSD-3-Clause</td>
+<td>✅ Yes</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>All tiers are MIT / Apache 2.0 / BSD clean — no copyleft, no NC, no MAU gating.</p>
+</blockquote>
+<h3 id="53-architecture-tier-components">5.3 Architecture — Tier Components</h3>
+<h4 id="t1-hot-tier-melotts-mit-cpu">T1 — Hot Tier: MeloTTS (MIT, CPU)</h4>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Architecture</strong></td>
+<td>VITS / VITS2 / Bert-VITS2 hybrid with multilingual BERT text encoder</td>
+</tr>
+<tr>
+<td><strong>Languages</strong></td>
+<td>Chinese, English (Indian accent), Japanese, Korean, French, Spanish + community Indic fine-tunes</td>
+</tr>
+<tr>
+<td><strong>Code-mix Precedent</strong></td>
+<td>Chinese speaker natively handles mixed Chinese-English — same pattern enables Tanglish after Tamil FT</td>
+</tr>
+<tr>
+<td><strong>Performance</strong></td>
+<td>CPU real-time, &lt;150 ms TTFA, no GPU required</td>
+</tr>
+</tbody>
+</table>
+<h4 id="t2-standard-tier-indicf5-apache-20-gpu">T2 — Standard Tier: IndicF5 (Apache 2.0, GPU)</h4>
+<p>Identical to Solution 1 backbone — 337M flow-matching DiT, native Tamil, ~280 ms first-chunk TTFA at FP8.</p>
+<h4 id="t3-expressive-tier-indic-parler-tts-apache-20-gpu">T3 — Expressive Tier: Indic Parler-TTS (Apache 2.0, GPU)</h4>
+<p>Identical to Solution 2 backbone — 938M T5, NL prompt control, ~330 ms TTFA.</p>
+<h4 id="english-fragment-tier-kokoro-82m-apache-20">English-Fragment Tier: Kokoro-82M (Apache 2.0)</h4>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Architecture</strong></td>
+<td>StyleTTS2 + iSTFTNet, 82M params, phoneme-level BERT encoder, style encoder, WavLM discriminator</td>
+</tr>
+<tr>
+<td><strong>Languages</strong></td>
+<td>English (American/British/Indian accent packs)</td>
+</tr>
+<tr>
+<td><strong>Performance</strong></td>
+<td>82M → ~150 MB VRAM → ~100 ms TTFA on cheap L4</td>
+</tr>
+<tr>
+<td><strong>Role</strong></td>
+<td>Synthesizes pure-English fragments within Tanglish utterances; cross-faded with Tamil fragments from T2</td>
+</tr>
+</tbody>
+</table>
+<h4 id="router-indiclid-lightweight-classifier">Router — IndicLID + Lightweight Classifier</h4>
+<ul>
+<li>IndicLID classifies tokens at 47 classes.</li>
+<li>XGBoost / rule-based classifier uses: language-ID ratio, utterance length, dialogue-act class, cache-hit signal → dispatches to T1/T2/T3/Kokoro in ~1 ms.</li>
+</ul>
+<h3 id="54-end-to-end-pipeline-latency-budget">5.4 End-to-End Pipeline &amp; Latency Budget</h3>
+<pre class="codehilite"><code>┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE A — Context-Aware Text Normalization             (~70 ms)   │
+│  (Same WFST + domain rules as Solutions 1 &amp; 2)                       │
+└─────────────────────────────────────────┬───────────────────────────┘
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE B — Dynamic Router                               (~5 ms)    │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐            │
+│  │ Cache    │→ │ IndicLID │→ │ Length / │→ │ Dispatch │            │
+│  │ lookup   │  │ ratio    │  │ dialogue │  │ decision │            │
+│  └──────────┘  └──────────┘  └──────────┘  └────┬─────┘            │
+└────────────────────────────────────────────────────┼────────────────┘
+                                                     │
+        ┌────────────────┬───────────┬───────────────┴───────────┐
+        ▼                ▼           ▼                           ▼
+┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐
+│ T1: MeloTTS  │ │ T2: IndicF5  │ │ T3: Parler   │ │ Kokoro (EN frag) │
+│ CPU          │ │ A100 FP8     │ │ A100 FP8     │ │ L4 GPU           │
+│ &lt;150ms TTFA  │ │ &lt;300ms TTFA  │ │ &lt;400ms TTFA  │ │ &lt;100ms TTFA     │
+└──────┬───────┘ └──────┬───────┘ └──────┬───────┘ └────────┬─────────┘
+       └────────────────┴───────────┴──────────────────────┬─────────┘
+                                                            ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE C — Audio Cross-Fade + Streaming                 (~30 ms)   │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ Sub-sentence     │→ │ Cross-fade at    │→ │ Triton decoupled │  │
+│  │ chunk assembler   │  │ boundaries       │  │ gRPC stream      │  │
+│  └──────────────────┘  └──────────────────┘  └────────┬─────────┘  │
+└───────────────────────────────────────────────────────┼──────────┘
+                                                         ▼
+                                               WebSocket → Voice Agent
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Path</th>
+<th>p99 TTFA</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>T1</strong></td>
+<td>MeloTTS (cache hit)</td>
+<td><strong>~185 ms</strong></td>
+<td>TTN 70 + router 5 + MeloTTS 80 + stream 30</td>
+</tr>
+<tr>
+<td><strong>T2</strong></td>
+<td>IndicF5</td>
+<td><strong>~385 ms</strong></td>
+<td>TTN 70 + router 5 + IndicF5 280 + stream 30</td>
+</tr>
+<tr>
+<td><strong>T3</strong></td>
+<td>Parler-TTS</td>
+<td><strong>~465 ms</strong></td>
+<td>TTN 70 + router 5 + Parler 330 + stream 60</td>
+</tr>
+<tr>
+<td><strong>EN</strong></td>
+<td>Kokoro fragment</td>
+<td><strong>~205 ms</strong></td>
+<td>TTN 70 + router 5 + Kokoro 100 + cross-fade 30</td>
+</tr>
+</tbody>
+</table>
+<p>All tiers comfortably within 500 ms p99.</p>
+<h3 id="55-tanglish-strategy-tiered-dispatch">5.5 Tanglish Strategy — Tiered Dispatch</h3>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Dispatch</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pure Tamil utterance</td>
+<td><strong>T2 (IndicF5)</strong></td>
+<td>Native Tamil quality</td>
+</tr>
+<tr>
+<td>Pure English (short)</td>
+<td><strong>Kokoro</strong></td>
+<td>Fastest, cheapest</td>
+</tr>
+<tr>
+<td>Pure English (long)</td>
+<td><strong>T2 (IndicF5)</strong></td>
+<td>Better prosody for long-form</td>
+</tr>
+<tr>
+<td>Tanglish, &gt;60% Tamil</td>
+<td><strong>T2 (IndicF5)</strong></td>
+<td>English-in-Tamil handled natively</td>
+</tr>
+<tr>
+<td>Tanglish, &gt;40% English</td>
+<td><strong>Split</strong> → Tamil→T2, English→Kokoro, cross-fade</td>
+<td>Optimal per-fragment quality</td>
+</tr>
+<tr>
+<td>Long-form emotional Tanglish</td>
+<td><strong>T3 (Parler)</strong></td>
+<td>NL prompt for tone control</td>
+</tr>
+<tr>
+<td>Short boilerplate</td>
+<td><strong>T1 (MeloTTS)</strong> or cache hit</td>
+<td>Near-zero cost</td>
+</tr>
+</tbody>
+</table>
+<p>The Solution 1 Tanglish router (IndicLID + IndicXlit + <code>&lt;cs&gt;</code> boundary marking) is reused for the T2 and T3 paths.</p>
+<h3 id="56-novel-component-sub-sentence-audio-caching">5.6 Novel Component — Sub-Sentence Audio Caching</h3>
+<p>The largest cost lever in Solution 3. Transport conversations have highly repetitive sub-structures:</p>
+<pre class="codehilite"><code>&quot;Your cab will arrive in&quot; + &lt;X&gt; + &quot;minutes&quot;
+&quot;Your OTP is&quot;             + &lt;XXXX&gt;
+&quot;Your booking ID is&quot;      + &lt;ID&gt;
+&quot;Please share your&quot;       + &lt;entity&gt;
+</code></pre>
+
+<p><strong>Mechanism:</strong></p>
+<ol>
+<li>Parse normalized text into a <strong>template tree</strong> — fixed prefix, variable slot, fixed suffix.</li>
+<li>Hash fixed prefix/suffix → Redis lookup of pre-synthesized audio chunks.</li>
+<li>Synthesize <strong>only the variable slot</strong> (the number/OTP/ID) — typically &lt;1s of audio in &lt;80 ms.</li>
+<li>Cross-fade the three pieces in the audio domain.</li>
+</ol>
+<p><strong>Impact:</strong> 40–60% of transport-domain requests served at sub-100 ms TTFA at near-zero GPU cost.</p>
+<h3 id="57-inference-serving">5.7 Inference &amp; Serving</h3>
+<table>
+<thead>
+<tr>
+<th>Technique</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Multi-model serving</strong></td>
+<td>Triton model repository: MeloTTS (CPU backend), IndicF5 (Python, decoupled), Parler (Python, decoupled), Kokoro (ONNX backend)</td>
+</tr>
+<tr>
+<td><strong>Streaming</strong></td>
+<td>Triton <code>decoupled: True</code> for all tiers — gRPC multi-response streaming</td>
+</tr>
+<tr>
+<td><strong>Batching</strong></td>
+<td>Per-tier dynamic batching: <code>max_queue_delay_microseconds: 5000</code> (5 ms)</td>
+</tr>
+<tr>
+<td><strong>GPU batching</strong></td>
+<td>vLLM-Omni for T2/T3 once F5-TTS support is GA</td>
+</tr>
+<tr>
+<td><strong>CPU optimization</strong></td>
+<td>ONNX export for MeloTTS + Kokoro — no PyTorch overhead on CPU/cheap-GPU</td>
+</tr>
+</tbody>
+</table>
+<h3 id="58-hardware-deployment">5.8 Hardware &amp; Deployment</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Hardware</th>
+<th>Replicas</th>
+<th>Cost / h</th>
+<th>Concurrency / Replica</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MeloTTS (T1, ONNX)</td>
+<td>CPU pool 16 vCPU</td>
+<td>2</td>
+<td>$0.50</td>
+<td>5–8</td>
+</tr>
+<tr>
+<td>IndicF5 (T2, FP8)</td>
+<td>A100 40GB</td>
+<td>2</td>
+<td>$2.00</td>
+<td>5–6</td>
+</tr>
+<tr>
+<td>Indic Parler-TTS (T3, FP8)</td>
+<td>Shared A100</td>
+<td>1</td>
+<td>(shared)</td>
+<td>2–4</td>
+</tr>
+<tr>
+<td>Kokoro (EN, ONNX)</td>
+<td>L4 24GB</td>
+<td>1</td>
+<td>$0.80</td>
+<td>8–10</td>
+</tr>
+<tr>
+<td>Router + TTN</td>
+<td>CPU pool 8 vCPU</td>
+<td>2</td>
+<td>$0.30</td>
+<td>20</td>
+</tr>
+<tr>
+<td>Redis cache</td>
+<td>16 GB RAM</td>
+<td>1</td>
+<td>$0.20</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Total footprint:</strong> 1× A100 40GB + 1× L4 24GB + CPU pool ≈ <strong>$3.30/h</strong>
+Sustainable throughput at 15–20 concurrent: <strong>~900–1,100 audio-min/hour → ~$0.0030–0.0037/min</strong></p>
+<h3 id="59-cost-analysis">5.9 Cost Analysis</h3>
+<table>
+<thead>
+<tr>
+<th>Concurrency</th>
+<th>Audio-min / hour</th>
+<th>Infra $/h</th>
+<th>$ / min</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>~60</td>
+<td>$3.30</td>
+<td>$0.055</td>
+<td>T1 + cache absorb most</td>
+</tr>
+<tr>
+<td>5</td>
+<td>~300</td>
+<td>$3.30</td>
+<td>$0.011</td>
+<td>40% cache hit</td>
+</tr>
+<tr>
+<td>10</td>
+<td>~550</td>
+<td>$3.30</td>
+<td>$0.0060</td>
+<td>45% cache hit</td>
+</tr>
+<tr>
+<td>15</td>
+<td>~800</td>
+<td>$3.30</td>
+<td>$0.0041</td>
+<td>50% cache hit, T1+T2</td>
+</tr>
+<tr>
+<td>20</td>
+<td>~1,000</td>
+<td>$3.80</td>
+<td><strong>$0.0038</strong></td>
+<td>55% cache hit, all tiers</td>
+</tr>
+</tbody>
+</table>
+<h3 id="510-strengths-weaknesses">5.10 Strengths &amp; Weaknesses</h3>
+<table>
+<thead>
+<tr>
+<th>Strengths</th>
+<th>Weaknesses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>✅ Lowest $/min among Solutions 1–3 — ~10× cheaper than commercial</td>
+<td>⚠️ Highest operational complexity among Solutions 1–3 (4 models, 2 hardware profiles)</td>
+</tr>
+<tr>
+<td>✅ 40–60% requests at &lt;100 ms TTFA via sub-sentence cache</td>
+<td>⚠️ Voice consistency across tiers requires matched speaker prompts — non-trivial timbre alignment</td>
+</tr>
+<tr>
+<td>✅ Graceful degradation: T3 → T2 → T1 under load</td>
+<td>⚠️ Cross-fade at sub-sentence boundaries risks prosody discontinuity if not tuned</td>
+</tr>
+<tr>
+<td>✅ Each tier independently scalable (CPU pool scales cheaply)</td>
+<td>⚠️ More moving parts = more failure modes</td>
+</tr>
+<tr>
+<td>✅ License-conservative (all MIT/Apache/BSD)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="511-when-to-choose-this-solution">5.11 When to Choose This Solution</h3>
+<p>Choose Solution 3 when <strong>absolute $/min is the dominant KPI</strong> and the team has the MLOps maturity to operate a four-model tiered system. Best for high-volume contact-center deployments where 40–60% cache/T1 absorption compounds into material monthly savings. Ideal as a <strong>phase-2 optimization</strong> after validating Solution 1 or 2.</p>
+<hr />
+<h2 id="6-solution-4-vits-fastspeech2-cascaded-quick-win-stack-fastest-path-to-endpoint">6. Solution 4 — VITS + FastSpeech2 Cascaded Quick-Win Stack (Fastest Path to Endpoint)</h2>
+<h3 id="61-overview-rationale">6.1 Overview &amp; Rationale</h3>
+<p>When the goal is a <strong>callable, license-clean, Tamil-native TTS endpoint inside one engineering week</strong> — before the production flow-matching or codec-LM backbone is hardened — this two-model cascaded stack is the correct answer.</p>
+<p>Both models have <strong>existing Tamil checkpoints</strong> with clean licenses and require no training from scratch:</p>
+<ul>
+<li><strong>VITS</strong> via <code>samprabin/tamil_vits</code> and HuggingFace&rsquo;s 20-minute fine-tune recipe</li>
+<li><strong>FastSpeech2</strong> via IIT Madras&rsquo;s MIT-licensed <code>FastSpeech2_HS</code> for 16 Indian languages</li>
+</ul>
+<p>Both are non-autoregressive / feed-forward, so inference is fast and fully predictable — no sampling variance, no step-count tuning. The cascade gives two complementary voices: <strong>VITS</strong> as the expressive hot tier and <strong>FastSpeech2 + HiFi-GAN</strong> as the deterministic fallback. This is the <strong>only solution of the four that can be stood up in days rather than weeks</strong>, and it becomes the permanent deterministic base layer for Solution 3.</p>
+<h3 id="62-license-audit">6.2 License Audit</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Role</th>
+<th>License</th>
+<th>Commercial Use</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>VITS</strong> (original paper impl.)</td>
+<td>T1 hot tier acoustic model</td>
+<td><strong>MIT</strong></td>
+<td>✅ Yes</td>
+<td>Conditional VAE + adversarial learning</td>
+</tr>
+<tr>
+<td><strong>samprabin/tamil_vits</strong></td>
+<td>Pretrained Tamil VITS checkpoint</td>
+<td>MIT</td>
+<td>✅ Yes</td>
+<td>Built on Coqui + IndicTTS data; includes <code>config.json</code>, <code>wavs/</code> + <code>metadata.csv</code></td>
+</tr>
+<tr>
+<td><strong>Coqui TTS library</strong></td>
+<td>Training/serving framework</td>
+<td><strong>MPL-2.0</strong> (code only)</td>
+<td>✅ Yes (code)</td>
+<td>Model weights license separately</td>
+</tr>
+<tr>
+<td>⚠️ <strong>Coqui XTTS-v2 weights</strong></td>
+<td><strong>Excluded — do NOT use</strong></td>
+<td>CPML (non-commercial)</td>
+<td>❌ No</td>
+<td>Non-commercial; pure VITS weights are clean</td>
+</tr>
+<tr>
+<td><strong>finetune-hf-vits</strong> (ylacombe)</td>
+<td>20-min fine-tune recipe</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>80–150 samples minimum for adaptation</td>
+</tr>
+<tr>
+<td><strong>VITS-fast-fine-tuning</strong> (Plachtaa)</td>
+<td>Voice adaptation recipe</td>
+<td>MIT</td>
+<td>✅ Yes</td>
+<td>Speaker adaptation on existing VITS</td>
+</tr>
+<tr>
+<td><strong>IITM FastSpeech2_HS</strong> (<code>smtiitm</code>)</td>
+<td>T2 fallback Tamil checkpoint</td>
+<td><strong>MIT</strong></td>
+<td>✅ Yes</td>
+<td>16 Indian languages, Hybrid Segmentation</td>
+</tr>
+<tr>
+<td><strong>NeMo FastSpeech2 + HiFi-GAN</strong></td>
+<td>Cascaded serving framework</td>
+<td><strong>Apache 2.0</strong></td>
+<td>✅ Yes</td>
+<td>Battle-tested via NVIDIA Riva</td>
+</tr>
+<tr>
+<td><strong>HiFi-GAN vocoder</strong> (NeMo)</td>
+<td>Waveform generation</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>Fine-tunable on synthesized mels</td>
+</tr>
+<tr>
+<td><strong>indic-text-normalization</strong> (Kenpath)</td>
+<td>WFST text normalizer</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>19 languages, Pynini-based</td>
+</tr>
+<tr>
+<td><strong>NeMo <code>nemo_text_processing</code></strong></td>
+<td>WFST ITN fallback</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>Deterministic + context-aware</td>
+</tr>
+<tr>
+<td><strong>IndicLID</strong> (ai4bharat)</td>
+<td>Language ID for routing</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>47 classes</td>
+</tr>
+<tr>
+<td><strong>ONNX Runtime</strong></td>
+<td>CPU/GPU acceleration</td>
+<td><strong>MIT</strong></td>
+<td>✅ Yes</td>
+<td>INT8 dynamic quantization</td>
+</tr>
+<tr>
+<td><strong>Triton Inference Server</strong></td>
+<td>Serving + streaming gRPC</td>
+<td>Apache 2.0</td>
+<td>✅ Yes</td>
+<td>Decoupled streaming</td>
+</tr>
+<tr>
+<td><strong>IndicVoices-R</strong> (Tamil subset)</td>
+<td>Fine-tune data</td>
+<td>CC-BY-4.0</td>
+<td>✅ Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>UTMOS / MANGO</strong></td>
+<td>Evaluation</td>
+<td>MIT / CC-BY</td>
+<td>✅ Yes</td>
+<td>Objective + human MOS</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Verdict:</strong> Pure VITS weights (MIT) + IITM FastSpeech2 (MIT) + NeMo (Apache 2.0) + ONNX Runtime (MIT) + Triton (Apache 2.0) — <strong>the cleanest license stack of all four solutions: no gating, no MAU thresholds, no NC clauses.</strong> Coqui XTTS-v2 weights are explicitly excluded (CPML non-commercial).</p>
+</blockquote>
+<h3 id="63-architecture-components">6.3 Architecture — Components</h3>
+<h4 id="t1-hot-tier-vits-mit-end-to-end">T1 Hot Tier — VITS (MIT, End-to-End)</h4>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Architecture</strong></td>
+<td>Conditional VAE with adversarial learning — GlowTTS encoder fused with HiFi-GAN vocoder, single forward pass, no external aligner (Monotonic Alignment Search during training)</td>
+</tr>
+<tr>
+<td><strong>Tamil Checkpoint</strong></td>
+<td><code>samprabin/tamil_vits</code> — complete recipe via Coqui TTS with custom Tamil dataset</td>
+</tr>
+<tr>
+<td><strong>Fine-tune Recipe</strong></td>
+<td><code>finetune-hf-vits</code> (Apache 2.0) — excellent adaptation in 20 minutes with 80–150 samples</td>
+</tr>
+<tr>
+<td><strong>Voice Adaptation</strong></td>
+<td><code>VITS-fast-fine-tuning</code> (MIT) — inject a target speaker voice into existing VITS</td>
+</tr>
+<tr>
+<td><strong>Inference Speed</strong></td>
+<td>~67× RTF (GPU, claimed); ~6× RTF measured on 3090 (~358 ms / short sentence); ~2 s/sentence on CPU unoptimized → <strong>ONNX export mandatory for &lt;200 ms CPU</strong></td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>22 kHz or 24 kHz PCM waveform (configurable)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="t2-fallback-tier-fastspeech2-hifi-gan-mit-apache-20-cascaded">T2 Fallback Tier — FastSpeech2 + HiFi-GAN (MIT + Apache 2.0, Cascaded)</h4>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Architecture</strong></td>
+<td>6 feed-forward Transformer blocks (256 hidden, 2 heads) + 1D-conv variance adaptor (duration / pitch / energy); non-autoregressive mel generation</td>
+</tr>
+<tr>
+<td><strong>Tamil Checkpoint</strong></td>
+<td><code>smtiitm/FastSpeech2_HS_latest_models</code> (IIT Madras, MIT) — 16 languages via Hybrid Segmentation; male + female voices</td>
+</tr>
+<tr>
+<td><strong>Vocoder</strong></td>
+<td>NeMo HiFi-GAN (Apache 2.0) — fine-tunable on synthesized mels for Tamil fidelity</td>
+</tr>
+<tr>
+<td><strong>Serving</strong></td>
+<td>NeMo + Triton (Apache 2.0); block-wise streaming extension reduces first-block latency</td>
+</tr>
+<tr>
+<td><strong>Inference Speed</strong></td>
+<td>Non-AR mel in milliseconds + HiFi-GAN ~10–30 ms; deterministic, no sampling variance</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>22 kHz PCM (NeMo default)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="text-normalization-indic-text-normalization-apache-20">Text Normalization — indic-text-normalization (Apache 2.0)</h4>
+<ul>
+<li>WFST-based (Pynini), 19 languages including Tamil, sub-millisecond latency.</li>
+<li>Tokenization → semiotic classification → verbalization → post-processing.</li>
+<li>Handles Arabic digits, Tamil-native digits (௦–௯), and mixed-script input.</li>
+<li>Fallback: NeMo <code>nemo_text_processing</code> (Apache 2.0) — fast deterministic + context-aware modes.</li>
+</ul>
+<h4 id="router-indiclid-apache-20">Router — IndicLID (Apache 2.0)</h4>
+<ul>
+<li>Two-stage classifier (fast linear + LM-finetuned), 47 classes (24 native-script + 21 romanized + English + Others).</li>
+<li>Dispatches Tamil-heavy → VITS, English-heavy → Kokoro or VITS English voice, mixed → VITS with <code>&lt;cs&gt;</code> marking.</li>
+</ul>
+<h3 id="64-end-to-end-pipeline-latency-budget">6.4 End-to-End Pipeline &amp; Latency Budget</h3>
+<pre class="codehilite"><code>┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE A — Context-Aware Text Normalization             (~70 ms)    │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ WFST normalizer  │→ │ Domain rule eng.  │→ │ Abbreviation     │  │
+│  │ (Pynini, 19 lng) │  │ (OTP, phone, ID, │  │ gazetteer        │  │
+│  │ numbers/dates/$  │  │ time, vehicle)   │  │ (Chennai Central)│  │
+│  └──────────────────┘  └──────────────────┘  └────────┬─────────┘  │
+└───────────────────────────────────────────────────────┼──────────┘
+                                                          ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE B — Router (IndicLID)                            (~10 ms)    │
+│  ┌──────────────────┐  ┌──────────────────┐                         │
+│  │ Token-level LID   │→ │ Dispatch:        │                         │
+│  │ (47 classes)      │  │ VITS / FastSpeech2│                        │
+│  └──────────────────┘  └────────┬─────────┘                         │
+└───────────────────────────────────┼──────────────────────────────────┘
+                                    ▼
+        ┌───────────────────────────┴──────────────────────┐
+        ▼                                                  ▼
+┌────────────────────────────────┐         ┌─────────────────────────────────┐
+│  T1: VITS (GPU or ONNX CPU)    │         │  T2: FastSpeech2 + HiFi-GAN    │
+│  ┌──────────────────────────┐  │         │  ┌──────────────────────────┐  │
+│  │ GlowTTS encoder         │  │         │  │ FF-Transformer (6 blk)   │  │
+│  │ + HiFi-GAN decoder      │  │         │  │ → mel-spectrogram         │  │
+│  └──────────────────────────┘  │         │  └────────────┬─────────────┘  │
+│  ~80 ms GPU / ~150 ms ONNX CPU │         │               ▼                │
+└──────────────┬─────────────────┘         │  ┌──────────────────────────┐  │
+               │                            │  │ HiFi-GAN vocoder         │  │
+               │                            │  │ → waveform                │  │
+               │                            │  └────────────┬─────────────┘  │
+               │                            │               │                │
+               │                            │  ~120 ms total (non-AR)        │
+               │                            └──────────────┬─────────────────┘
+               ▼                                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  STAGE C — Streaming + Audio Cross-Fade                 (~30 ms)   │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ PCM/Opus 50ms    │→ │ Cross-fade if    │→ │ Triton decoupled │  │
+│  │ chunks           │  │ tier-switch      │  │ gRPC / WebSocket │  │
+│  └──────────────────┘  └──────────────────┘  └────────┬─────────┘  │
+└───────────────────────────────────────────────────────┼──────────┘
+                                                          ▼
+                                               Voice Agent Gateway
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Component</th>
+<th>p99 Latency</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A</strong></td>
+<td>Text Normalization</td>
+<td>70 ms</td>
+<td>WFST &lt;1ms + rules ~20ms + abbreviations ~40ms</td>
+</tr>
+<tr>
+<td><strong>B</strong></td>
+<td>Router</td>
+<td>10 ms</td>
+<td>IndicLID token classification</td>
+</tr>
+<tr>
+<td><strong>C</strong></td>
+<td>TTS Synthesis</td>
+<td>80–150 ms</td>
+<td>VITS GPU 80ms / VITS ONNX CPU 150ms / FastSpeech2+HiFi-GAN 120ms</td>
+</tr>
+<tr>
+<td><strong>D</strong></td>
+<td>Streaming + Network</td>
+<td>30 ms</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Total TTFA (VITS GPU)</strong></td>
+<td></td>
+<td><strong>~190 ms</strong></td>
+<td><strong>310 ms headroom vs 500 ms</strong></td>
+</tr>
+<tr>
+<td><strong>Total TTFA (VITS ONNX CPU)</strong></td>
+<td></td>
+<td><strong>~260 ms</strong></td>
+<td>Substantial headroom</td>
+</tr>
+<tr>
+<td><strong>Total TTFA (FastSpeech2 GPU)</strong></td>
+<td></td>
+<td><strong>~230 ms</strong></td>
+<td>Deterministic, no sampling variance</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>All paths have the <strong>largest latency headroom of all four solutions</strong> (~240–310 ms), leaving ample budget for batching under load.</p>
+</blockquote>
+<h3 id="65-tanglish-strategy-bilingual-fine-tune-path">6.5 Tanglish Strategy — Bilingual Fine-Tune Path</h3>
+<p>Neither VITS nor FastSpeech2 natively supports Tanglish (single-language phoneme inventories). The strategy is a <strong>bilingual fine-tune</strong>, validated by the MeloTTS precedent where VITS/Bert-VITS2 natively handles mixed Chinese-English when trained on code-mixed data.</p>
+<h4 id="step-1-construct-a-tanglish-parallel-corpus-2050h">Step 1 — Construct a Tanglish Parallel Corpus (~20–50h)</h4>
+<ul>
+<li>Hire 2–4 native Chennai-region Tamil-English bilingual voice talents.</li>
+<li>Script ~1,000 transport-domain dialogues in all three Tanglish forms:</li>
+<li>Tamil Unicode + Latin English: <code>உங்கள் pickup location எங்கே?</code></li>
+<li>Latin-Tamil + Latin English: <code>Unga pickup location enga?</code></li>
+<li>Tamil Unicode + English Unicode: <code>Chennai Central-ல இருக்கா?</code></li>
+<li>Record at 22 kHz (matching VITS native sample rate) or 48 kHz (downsample to 22 kHz).</li>
+<li>Transliterate Latin-Tamil tokens to Tamil Unicode via IndicXlit (Apache 2.0) for a unified-script training set.</li>
+</ul>
+<h4 id="step-2-fine-tune-vits">Step 2 — Fine-Tune VITS</h4>
+<ul>
+<li>Use <code>finetune-hf-vits</code> (Apache 2.0) — 20 minutes, 80–150 samples minimum, but use the full 20–50h corpus for production quality.</li>
+<li>Bilingual phoneme set learned during fine-tuning; no architecture change needed.</li>
+<li>Alternative: <code>VITS-fast-fine-tuning</code> (MIT) for voice adaptation atop existing Tamil VITS.</li>
+</ul>
+<h4 id="step-3-fine-tune-fastspeech2-optional-for-fallback-tier">Step 3 — Fine-Tune FastSpeech2 (Optional, for Fallback Tier)</h4>
+<ul>
+<li>Requires Montreal Forced Aligner (MFA) or Hybrid Segmentation (HS) — IITM&rsquo;s HS recipe is the path of least resistance.</li>
+<li>Fine-tune HiFi-GAN on synthesized mels for best Tamil fidelity.</li>
+</ul>
+<h4 id="step-4-insert-cs-boundary-tokens">Step 4 — Insert <code>&lt;cs&gt;</code> Boundary Tokens</h4>
+<ul>
+<li>Single-script bilingual training with explicit boundary marking outperforms naive concatenation.</li>
+<li>Insert learned <code>&lt;cs&gt;</code> token at language transitions; model learns prosody shift anticipation.</li>
+</ul>
+<blockquote>
+<p><strong>Honest timeline:</strong> Fine-tune takes <strong>3–5 days of engineering + recording</strong>, not &ldquo;one afternoon.&rdquo; For a true week-one prototype, ship <strong>Tamil-only VITS</strong> and use a separate English VITS voice for English fragments with cross-fade. Tanglish fine-tune is a <strong>week-two deliverable</strong>.</p>
+</blockquote>
+<h3 id="66-inference-serving">6.6 Inference &amp; Serving</h3>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>VITS — Coqui TTS Server (Days 1–2, quickest)</strong></td>
+<td><code>tts-server --model_path &lt;tamil_vits&gt; --config_path config.json</code> — instant REST API; no streaming; suitable for short utterances</td>
+</tr>
+<tr>
+<td><strong>VITS — ONNX + Triton (Days 3–5, production)</strong></td>
+<td>Export VITS to ONNX; serve via Triton ONNX backend with dynamic batching (<code>max_queue_delay_microseconds: 5000</code>); wrap in Triton Python backend (<code>decoupled: True</code>, gRPC only) for streaming; chunk at sentence/clause boundaries, cross-fade in audio domain</td>
+</tr>
+<tr>
+<td><strong>FastSpeech2 + HiFi-GAN — NeMo + Triton</strong></td>
+<td>Canonical path (<code>tts_en_e2e_fastspeech2hifigan</code> NGC model as reference; swap in IITM Tamil checkpoint); block-wise mel generation → HiFi-GAN incremental consumption; NVIDIA Riva wraps NeMo for optimized inference (verify Riva license)</td>
+</tr>
+<tr>
+<td><strong>ONNX Runtime Optimization (Critical for CPU)</strong></td>
+<td>Export both VITS and HiFi-GAN to ONNX; <code>ORT_ENABLE_ALL</code>; INT8 dynamic quantization (~2× CPU speedup, near-lossless); without ONNX, VITS on CPU is ~2 s/sentence — too slow</td>
+</tr>
+<tr>
+<td><strong>Caching</strong></td>
+<td>Redis hash on normalized sub-sentence strings; 30–40% boilerplate hit rate → TTFA &lt;50 ms on hit</td>
+</tr>
+<tr>
+<td><strong>Concurrency</strong></td>
+<td>VITS GPU replicas (A100): 4× ~5 = 20; VITS ONNX CPU pool (16 vCPU): 4× ~3 = 12 overflow; FastSpeech2 GPU: 2× ~6 = 12 fallback; <strong>total ~20–25 concurrent</strong> with graceful degradation to CPU</td>
+</tr>
+</tbody>
+</table>
+<h3 id="67-hardware-deployment">6.7 Hardware &amp; Deployment</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Hardware</th>
+<th>Replicas</th>
+<th>VRAM / RAM</th>
+<th>Concurrency / Replica</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VITS (T1, FP16)</td>
+<td>A100 40GB</td>
+<td>2</td>
+<td>~1.5 GB</td>
+<td>5–6</td>
+</tr>
+<tr>
+<td>VITS (T1, ONNX INT8)</td>
+<td>CPU pool 16 vCPU</td>
+<td>4</td>
+<td>~2 GB RAM</td>
+<td>3</td>
+</tr>
+<tr>
+<td>FastSpeech2 + HiFi-GAN (T2)</td>
+<td>A100 40GB (shared)</td>
+<td>1</td>
+<td>~2 GB</td>
+<td>6</td>
+</tr>
+<tr>
+<td>IndicLID + TTN</td>
+<td>CPU pool 8 vCPU</td>
+<td>2</td>
+<td>RAM only</td>
+<td>20</td>
+</tr>
+<tr>
+<td>Redis cache</td>
+<td>8 GB RAM</td>
+<td>1</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Total footprint:</strong> 1× A100 40GB + CPU pool ≈ <strong>$2.50/h (cheapest of all four solutions)</strong>
+Sustainable throughput at 15–20 concurrent: <strong>~700–900 audio-min/hour → ~$0.0030–0.0036/min</strong></p>
+<h3 id="68-cost-analysis">6.8 Cost Analysis</h3>
+<table>
+<thead>
+<tr>
+<th>Concurrency</th>
+<th>Audio-min / hour</th>
+<th>Infra $/h</th>
+<th>$ / min</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>~55</td>
+<td>$2.50</td>
+<td>$0.045</td>
+<td>Underutilized</td>
+</tr>
+<tr>
+<td>5</td>
+<td>~280</td>
+<td>$2.50</td>
+<td>$0.0089</td>
+<td>30% cache hit</td>
+</tr>
+<tr>
+<td>10</td>
+<td>~500</td>
+<td>$2.50</td>
+<td>$0.0050</td>
+<td>35% cache hit, CPU overflow on</td>
+</tr>
+<tr>
+<td>15</td>
+<td>~700</td>
+<td>$2.50</td>
+<td>$0.0036</td>
+<td>40% cache hit, all tiers active</td>
+</tr>
+<tr>
+<td>20</td>
+<td>~900</td>
+<td>$3.00</td>
+<td><strong>$0.0033</strong></td>
+<td>45% cache hit, near saturation</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Cheapest $/min of all four solutions</strong> at 15–20 concurrent — even cheaper than Solution 3, because both models are tiny and the CPU pool absorbs significant overflow.</p>
+</blockquote>
+<h3 id="69-strengths-weaknesses">6.9 Strengths &amp; Weaknesses</h3>
+<table>
+<thead>
+<tr>
+<th>Strengths</th>
+<th>Weaknesses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>✅ <strong>Fastest time-to-deploy</strong> — existing Tamil checkpoints, no training for v1</td>
+<td>⚠️ Lower naturalness than flow-matching/codec-LM — MOS 3.5–3.8 vs 4.0–4.3; acceptable for contact-center, not premium</td>
+</tr>
+<tr>
+<td>✅ <strong>Cleanest license stack</strong> — pure MIT/Apache, no gating, no NC, no MAU</td>
+<td>⚠️ No native Tanglish — 3–5 day fine-tune on self-constructed corpus (week-two deliverable)</td>
+</tr>
+<tr>
+<td>✅ <strong>Lowest $/min</strong> — ~$0.0033 at 20 concurrent</td>
+<td>⚠️ Single-speaker per checkpoint; voice switching needs cross-fade engineering</td>
+</tr>
+<tr>
+<td>✅ <strong>Smallest models</strong> — VITS ~30–80M, FastSpeech2 ~15M + HiFi-GAN ~14M</td>
+<td>⚠️ No emotion/prosody prompt control (requires Parler-class model)</td>
+</tr>
+<tr>
+<td>✅ <strong>Deterministic, feed-forward</strong> — predictable p99, no sampling variance</td>
+<td>⚠️ VITS CPU ~2 s/sentence without ONNX — ONNX+INT8 mandatory</td>
+</tr>
+<tr>
+<td>✅ <strong>20-minute fine-tune recipe</strong> for voice adaptation</td>
+<td>⚠️ Cascaded FastSpeech2 needs vocoder tuning (~1 day training)</td>
+</tr>
+<tr>
+<td>✅ <strong>Validated code-mix architecture</strong> — VITS/Bert-VITS2 proven on Chinese-English</td>
+<td>⚠️ Coqui TTS is community-maintained (Coqui shut down Dec 2023) — no commercial SLA</td>
+</tr>
+</tbody>
+</table>
+<h3 id="610-when-to-choose-this-solution">6.10 When to Choose This Solution</h3>
+<p>Choose Solution 4 when the priority is <strong>fastest path to a working, license-clean, Tamil-native TTS endpoint</strong>:</p>
+<ul>
+<li>You need a callable prototype inside one engineering week to validate the broader voice-agent pipeline.</li>
+<li>You need the lowest possible $/min for high-volume contact-center traffic where premium naturalness is not the primary KPI.</li>
+<li>You need a deterministic fallback tier that always works when the production flow-matching backbone is being fine-tuned or overloaded.</li>
+<li>You have limited ML engineering capacity and want models with existing Tamil checkpoints rather than training from scratch.</li>
+</ul>
+<blockquote>
+<p><strong>Strategic role:</strong> This is the <strong>recommended week-one deploy</strong> that buys time to build the production backbone. Once the backbone (Solution 1 or 2) is validated, this stack transitions to the T1/T2 hot/fallback tiers in Solution 3&rsquo;s hybrid architecture — it is not discarded, it becomes the permanent deterministic base layer.</p>
+</blockquote>
+<hr />
+<h2 id="7-cross-solution-comparison-all-four">7. Cross-Solution Comparison (All Four)</h2>
+<h3 id="71-feature-matrix">7.1 Feature Matrix</h3>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Solution 1 — IndicF5 Modular</th>
+<th>Solution 2 — Parler Single</th>
+<th>Solution 3 — Hybrid Tiered</th>
+<th><strong>Solution 4 — VITS + FastSpeech2</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Time to deploy</strong></td>
+<td>2–3 weeks</td>
+<td>2–3 weeks</td>
+<td>3–4 weeks</td>
+<td><strong>3–5 days</strong></td>
+</tr>
+<tr>
+<td><strong>Models in stack</strong></td>
+<td>IndicF5 + Vocos + TTN</td>
+<td>Indic Parler-TTS + TTN</td>
+<td>MeloTTS + IndicF5 + Parler + Kokoro + TTN</td>
+<td><strong>VITS + FastSpeech2 + HiFi-GAN + TTN</strong></td>
+</tr>
+<tr>
+<td><strong>Parameters (primary)</strong></td>
+<td>337M</td>
+<td>938M</td>
+<td>82M–938M (tiered)</td>
+<td><strong>~30–80M + 15M + 14M (smallest)</strong></td>
+</tr>
+<tr>
+<td><strong>Primary license</strong></td>
+<td>Apache 2.0 (gated)</td>
+<td>Apache 2.0 (gated)</td>
+<td>MIT + Apache 2.0</td>
+<td><strong>MIT + Apache 2.0 (cleanest, no gating)</strong></td>
+</tr>
+<tr>
+<td><strong>Tamil checkpoint exists?</strong></td>
+<td>✅ (in IndicF5)</td>
+<td>✅ (in Indic Parler-TTS)</td>
+<td>✅ (multiple)</td>
+<td><strong>✅ (samprabin VITS + IITM FS2)</strong></td>
+</tr>
+<tr>
+<td><strong>Tanglish native?</strong></td>
+<td>⚠️ via router</td>
+<td>⚠️ via LoRA</td>
+<td>⚠️ via tiered split</td>
+<td><strong>❌ via fine-tune (3–5 days)</strong></td>
+</tr>
+<tr>
+<td><strong>p99 TTFA (cold)</strong></td>
+<td>~435 ms</td>
+<td>~475 ms</td>
+<td>~385–465 ms (tiered)</td>
+<td><strong>~190–260 ms (lowest)</strong></td>
+</tr>
+<tr>
+<td><strong>$/min @ 15 concurrent</strong></td>
+<td>~$0.0046</td>
+<td>~$0.0050</td>
+<td>~$0.0041</td>
+<td><strong>~$0.0036</strong></td>
+</tr>
+<tr>
+<td><strong>$/min @ 20 concurrent</strong></td>
+<td>~$0.0044</td>
+<td>~$0.0050</td>
+<td>~$0.0038</td>
+<td><strong>~$0.0033 (cheapest)</strong></td>
+</tr>
+<tr>
+<td><strong>Naturalness (MOS)</strong></td>
+<td>~4.0–4.3</td>
+<td>~4.0–4.3</td>
+<td>Tier-dependent</td>
+<td><strong>~3.5–3.8</strong></td>
+</tr>
+<tr>
+<td><strong>Ops complexity</strong></td>
+<td>Medium</td>
+<td>Low</td>
+<td>High</td>
+<td><strong>Low</strong></td>
+</tr>
+<tr>
+<td><strong>Expressiveness</strong></td>
+<td>Medium</td>
+<td><strong>High</strong> (emotion via prompt)</td>
+<td>Tier-dependent</td>
+<td><strong>Low</strong></td>
+</tr>
+<tr>
+<td><strong>Determinism</strong></td>
+<td>Sampling variance (CFM)</td>
+<td>Sampling variance (AR)</td>
+<td>Mixed</td>
+<td><strong>Fully deterministic (feed-forward)</strong></td>
+</tr>
+<tr>
+<td><strong>Recommended for</strong></td>
+<td>Default production backbone</td>
+<td>Simplicity + emotion</td>
+<td>Max cost efficiency (large scale)</td>
+<td><strong>Week-one quick-win + deterministic fallback</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="72-cost-vs-concurrency">7.2 Cost vs. Concurrency</h3>
+<pre class="codehilite"><code> $/min
+ 0.06 ┤ ●  S1 ● S2 ● S3 ● S4  (concurrency = 1, underutilized)
+      │
+ 0.01 ┤         ●──●──●──●  (concurrency = 5)
+      │
+0.005 ┤               ● S2 ──● S2 (10→15→20)
+      │               ● S1 ──● S1
+0.004 ┤                     ● S3 ──● S3
+      │                     ● S4 ──● S4  ← cheapest at scale
+      └─────────────────────────────────
+        1    5    10    15    20  concurrent
+</code></pre>
+
+<h3 id="73-latency-comparison">7.3 Latency Comparison</h3>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>S1 (IndicF5)</th>
+<th>S2 (Parler)</th>
+<th>S3 (T1)</th>
+<th>S3 (T2)</th>
+<th>S3 (T3)</th>
+<th><strong>S4 (VITS GPU)</strong></th>
+<th><strong>S4 (FS2)</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Text Normalization</td>
+<td>70 ms</td>
+<td>70 ms</td>
+<td>70 ms</td>
+<td>70 ms</td>
+<td>70 ms</td>
+<td><strong>70 ms</strong></td>
+<td><strong>70 ms</strong></td>
+</tr>
+<tr>
+<td>Routing / Prompt</td>
+<td>35 ms</td>
+<td>15 ms</td>
+<td>5 ms</td>
+<td>5 ms</td>
+<td>5 ms</td>
+<td><strong>10 ms</strong></td>
+<td><strong>10 ms</strong></td>
+</tr>
+<tr>
+<td>Acoustic Backbone</td>
+<td>280 ms</td>
+<td>330 ms</td>
+<td>80 ms</td>
+<td>280 ms</td>
+<td>330 ms</td>
+<td><strong>80 ms</strong></td>
+<td><strong>120 ms</strong></td>
+</tr>
+<tr>
+<td>Vocoder / Codec + Stream</td>
+<td>50 ms</td>
+<td>60 ms</td>
+<td>30 ms</td>
+<td>30 ms</td>
+<td>60 ms</td>
+<td><strong>30 ms</strong></td>
+<td><strong>30 ms</strong></td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>435 ms</strong></td>
+<td><strong>475 ms</strong></td>
+<td><strong>185 ms</strong></td>
+<td><strong>385 ms</strong></td>
+<td><strong>465 ms</strong></td>
+<td><strong>190 ms</strong></td>
+<td><strong>230 ms</strong></td>
+</tr>
+</tbody>
+</table>
+<p>All paths satisfy <strong>p99 ≤ 500 ms</strong>. Solution 4 has the largest headroom (240–310 ms).</p>
+<h3 id="74-naturalness-vs-speed-trade-off">7.4 Naturalness vs. Speed Trade-off</h3>
+<pre class="codehilite"><code> MOS
+ 4.3 ┤  ● S1   ● S2
+     │         ╱
+ 4.0 ┤        ● S3 (T2/T3 avg)
+     │
+ 3.8 ┤
+ 3.6 ┤              ● S4
+     └──────────────────────────
+        190ms  385ms  435ms  475ms  p99 TTFA
+              ← faster          slower →
+</code></pre>
+
+<blockquote>
+<p>There is no single &ldquo;best&rdquo; model — only the right trade-off for the phase. Ship speed (S4) first, then quality (S1/S2), then unit economics (S3).</p>
+</blockquote>
+<hr />
+<h2 id="8-decision-matrix-which-solution-to-choose">8. Decision Matrix — Which Solution to Choose</h2>
+<table>
+<thead>
+<tr>
+<th>If your priority is&hellip;</th>
+<th>Choose</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Lowest risk as production backbone</strong></td>
+<td><strong>Solution 1</strong></td>
+<td>Apache 2.0/MIT, modular, no mandatory fine-tune for v1, 65 ms latency headroom</td>
+</tr>
+<tr>
+<td><strong>Simplest operations + emotional prosody</strong></td>
+<td><strong>Solution 2</strong></td>
+<td>One model, one path; NL prompt controls tone (calm/upbeat/apologetic)</td>
+</tr>
+<tr>
+<td><strong>Lowest $/min at high volume</strong></td>
+<td><strong>Solution 4</strong> (≈$0.0033) then <strong>Solution 3</strong> (≈$0.0038)</td>
+<td>S4 cheapest deterministic; S3 cheapest expressive at scale</td>
+</tr>
+<tr>
+<td><strong>Fastest working endpoint (days, not weeks)</strong></td>
+<td><strong>Solution 4</strong></td>
+<td>Existing Tamil checkpoints, 3–5 day deploy, no training for v1</td>
+</tr>
+<tr>
+<td><strong>Highest naturalness / premium UX</strong></td>
+<td><strong>Solution 1 or 2</strong></td>
+<td>MOS 4.0–4.3 vs 3.5–3.8 for S4</td>
+</tr>
+<tr>
+<td><strong>Smallest team / limited ML capacity</strong></td>
+<td><strong>Solution 4</strong> (week 1) then <strong>Solution 2</strong></td>
+<td>Minimal serving surface; existing checkpoints</td>
+</tr>
+<tr>
+<td><strong>Strong infra team optimizing for scale</strong></td>
+<td><strong>Solution 3</strong> (built atop S4)</td>
+<td>Best expressive unit economics once volume &gt;500 audio-min/hour</td>
+</tr>
+<tr>
+<td><strong>Strictest license posture (no gating)</strong></td>
+<td><strong>Solution 4</strong></td>
+<td>Pure MIT/Apache + MPL-2.0 code; zero gated weights</td>
+</tr>
+<tr>
+<td><strong>Deterministic, boundable p99</strong></td>
+<td><strong>Solution 4</strong></td>
+<td>Feed-forward, non-AR — no sampling variance</td>
+</tr>
+<tr>
+<td><strong>Balanced default</strong></td>
+<td><strong>Solution 1</strong> as backbone, <strong>Solution 4</strong> as week-one</td>
+<td>Recommended phased approach</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Phased adoption strategy:</strong> Ship <strong>Solution 4</strong> (week 1) → validate pipeline → harden <strong>Solution 1 or 2</strong> as production backbone (weeks 3–6) → evolve into <strong>Solution 3</strong> where S4 becomes the permanent T1/T2 deterministic tiers.</p>
+</blockquote>
+<hr />
+<h2 id="9-implementation-roadmap-phased-rollout">9. Implementation Roadmap — Phased Rollout</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Solution</th>
+<th>Duration</th>
+<th>Goal</th>
+<th>Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Phase 0 — Quick Win</strong></td>
+<td><strong>Solution 4</strong></td>
+<td><strong>Week 1</strong></td>
+<td>Working Tamil TTS endpoint, license-clean, ≤500 ms p99, validating the voice-agent pipeline</td>
+<td>Callable REST/gRPC endpoint; Tamil-only VITS; deterministic fallback live</td>
+</tr>
+<tr>
+<td><strong>Phase 1 — Tanglish Fine-Tune</strong></td>
+<td>Solution 4 + Tanglish corpus</td>
+<td><strong>Weeks 2–3</strong></td>
+<td>VITS fine-tuned on 20–50h Tanglish audio, <code>&lt;cs&gt;</code> boundary marking</td>
+<td>Tanglish-capable VITS; MUSHRA-evaluated</td>
+</tr>
+<tr>
+<td><strong>Phase 2 — Production Backbone</strong></td>
+<td><strong>Solution 1</strong> (IndicF5) or <strong>Solution 2</strong> (Indic Parler-TTS)</td>
+<td><strong>Weeks 3–6</strong></td>
+<td>Flow-matching or codec-LM backbone deployed, Tanglish LoRA, 15–20 concurrent at sub-500 ms</td>
+<td>Production-grade naturalness (MOS 4.0–4.3)</td>
+</tr>
+<tr>
+<td><strong>Phase 3 — Hybrid Optimization</strong></td>
+<td><strong>Solution 3</strong> (Hybrid tiered)</td>
+<td><strong>Weeks 6–8</strong></td>
+<td>S4&rsquo;s VITS+FastSpeech2 becomes T1/T2 deterministic tiers; IndicF5/Parler becomes T3 expressive tier; template-tree sub-sentence caching live</td>
+<td>Lowest $/min at scale; graceful degradation</td>
+</tr>
+</tbody>
+</table>
+<h3 id="detailed-task-breakdown">Detailed Task Breakdown</h3>
+<h4 id="phase-0-foundation-week-1-solution-4">Phase 0 — Foundation (Week 1) — Solution 4</h4>
+<ul>
+<li>[ ] Provision hardware: 1× A100 40GB + CPU pool (16+8 vCPU) + Redis (8 GB) — cheapest footprint</li>
+<li>[ ] Pull <code>samprabin/tamil_vits</code> checkpoint and <code>smtiitm/FastSpeech2_HS</code> checkpoint; verify MIT licenses</li>
+<li>[ ] Deploy VITS via <code>tts-server</code> (day 1 — instant REST API)</li>
+<li>[ ] Export VITS + HiFi-GAN to ONNX; deploy via Triton ONNX backend with <code>ORT_ENABLE_ALL</code> + INT8 dynamic quantization</li>
+<li>[ ] Implement WFST text normalization (indic-text-normalization + NeMo fallback) with transport-domain gazetteer</li>
+<li>[ ] Deploy IndicLID router + Redis sub-sentence cache</li>
+<li>[ ] Benchmark: p99 TTFA (~190 ms VITS GPU / ~260 ms ONNX CPU), MOS (UTMOS), Tamil WER</li>
+</ul>
+<h4 id="phase-1-tanglish-fine-tune-weeks-23-solution-4-extension">Phase 1 — Tanglish Fine-Tune (Weeks 2–3) — Solution 4 Extension</h4>
+<ul>
+<li>[ ] Construct 20–50h Tanglish parallel corpus (2–4 Chennai bilingual talents, ~1,000 dialogues, all three Tanglish forms)</li>
+<li>[ ] Transliterate Latin-Tamil → Tamil Unicode via IndicXlit for unified-script training set</li>
+<li>[ ] Fine-tune VITS via <code>finetune-hf-vits</code> (20 min recipe, full corpus for quality)</li>
+<li>[ ] Optionally fine-tune FastSpeech2 via Hybrid Segmentation + HiFi-GAN on synthesized mels</li>
+<li>[ ] Insert <code>&lt;cs&gt;</code> boundary tokens; evaluate on custom 200-utterance Tanglish set + MUSHRA</li>
+</ul>
+<h4 id="phase-2-production-backbone-weeks-36-solution-1-or-2">Phase 2 — Production Backbone (Weeks 3–6) — Solution 1 or 2</h4>
+<ul>
+<li>[ ] Request gated access for IndicF5 / Indic Parler-TTS; confirm commercial terms in writing</li>
+<li>[ ] Upgrade hardware to include L4 24GB if needed (Solution 1/3) + Redis 16 GB</li>
+<li>[ ] Deploy IndicF5 (FP8 via TensorRT-LLM, Triton Python backend, Sway Sampling, chunked streaming) <strong>or</strong> Indic Parler-TTS (FP8, vLLM, NL prompt)</li>
+<li>[ ] Integrate IndicXlit transliteration + <code>&lt;cs&gt;</code> boundary marking (Solution 1) or LoRA on 50–100h Tanglish corpus (Solution 2)</li>
+<li>[ ] Load test at 15–20 concurrent; validate $/min and cache hit rates; patch number-pronunciation edge cases in TTN</li>
+<li>[ ] Migrate to vLLM-Omni once F5-TTS support is GA</li>
+</ul>
+<h4 id="phase-3-scale-optimization-weeks-68-solution-3">Phase 3 — Scale Optimization (Weeks 6–8) — Solution 3</h4>
+<ul>
+<li>[ ] Deploy MeloTTS (T1, ONNX on CPU) and Kokoro-82M (ONNX on L4) as additional Triton backends</li>
+<li>[ ] Implement XGBoost router + template-tree sub-sentence caching (prefix/suffix pre-synthesis, variable slot only)</li>
+<li>[ ] Tune cross-fade and voice-consistency (matched speaker prompts across tiers); evaluate with MUSHRA</li>
+<li>[ ] Validate 40–60% sub-100ms TTFA and $0.0038/min at 20 concurrent</li>
+<li>[ ] <strong>Solution 4&rsquo;s VITS/FastSpeech2 remains as permanent T1/T2</strong> — no discard, just tier re-assignment</li>
+</ul>
+<hr />
+<h2 id="10-risks-exclusions-mitigations">10. Risks, Exclusions &amp; Mitigations</h2>
+<h3 id="101-known-risks">10.1 Known Risks</h3>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IndicF5 number pronunciation → gibberish</td>
+<td>Degraded quality on OTP/ID utterances</td>
+<td>Patch in WFST verbalization layer; LoRA fine-tune with numeric-heavy data</td>
+</tr>
+<tr>
+<td>vLLM-Omni F5-TTS support not yet GA</td>
+<td>No continuous batching for IndicF5 at launch</td>
+<td>Interim: Triton Python backend with manual micro-batching (batch 4–6)</td>
+</tr>
+<tr>
+<td>Gated HF access delay (S1/S2/S3)</td>
+<td>Blocks production backbone start</td>
+<td>Request immediately; use ungated mirrors where verified; <strong>Solution 4 has no gating — ship it first</strong></td>
+</tr>
+<tr>
+<td>Tanglish audio scarcity</td>
+<td>v1 Tanglish prosody may be imperfect</td>
+<td>S1 router unification covers v1; S4 20–50h corpus in weeks 2–3; S2 LoRA on 50–100h for v2</td>
+</tr>
+<tr>
+<td>Voice inconsistency across tiers (S3)</td>
+<td>T1/T2/T3/Kokoro timbre mismatch</td>
+<td>Fixed speaker prompts + embedding alignment; evaluate with MUSHRA</td>
+</tr>
+<tr>
+<td>Cross-fade prosody discontinuity (S3/S4)</td>
+<td>Audible seams at sub-sentence boundaries</td>
+<td>Prosody-aware chunking at clause boundaries; overlap-add cross-fade</td>
+</tr>
+<tr>
+<td>VITS CPU latency ~2 s/sentence unoptimized (S4)</td>
+<td>Misses p99 target on CPU pool</td>
+<td><strong>ONNX export + INT8 quantization is mandatory</strong> — brings CPU to ~150 ms</td>
+</tr>
+<tr>
+<td>Coqui TTS community-maintained (S4)</td>
+<td>No commercial SLA (Coqui shut down Dec 2023)</td>
+<td>Pin to <code>coqui-tts</code> PyPI community fork; containerize; no runtime dependency on Coqui the company</td>
+</tr>
+<tr>
+<td>FastSpeech2 cascaded vocoder mismatch (S4)</td>
+<td>HiFi-GAN fidelity loss on Tamil</td>
+<td>Fine-tune HiFi-GAN on synthesized mels (~1 day training)</td>
+</tr>
+<tr>
+<td>S4 lower naturalness (MOS 3.5–3.8)</td>
+<td>Not premium UX</td>
+<td>Acceptable for week-one transport contact-center; production backbone (S1/S2) upgrades MOS to 4.0–4.3</td>
+</tr>
+</tbody>
+</table>
+<h3 id="102-explicitly-excluded-components">10.2 Explicitly Excluded Components</h3>
+<p>These were evaluated and <strong>rejected</strong> due to license incompatibility with commercial self-hosting:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>License</th>
+<th>Reason for Exclusion</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>XTTS-v2 / Coqui weights</strong></td>
+<td>Coqui Public Model License (CPML)</td>
+<td>Non-commercial only — do NOT load weights (code itself is MPL-2.0 and safe)</td>
+</tr>
+<tr>
+<td><strong>F5-TTS base</strong></td>
+<td>CC-BY-NC</td>
+<td>Non-commercial</td>
+</tr>
+<tr>
+<td><strong>Spark-TTS</strong></td>
+<td>CC BY-NC-SA 4.0 (training data terms)</td>
+<td>Non-commercial despite GitHub Apache tag</td>
+</tr>
+<tr>
+<td><strong>Higgs Audio V3</strong></td>
+<td>Research &amp; Non-Commercial</td>
+<td>Non-commercial</td>
+</tr>
+<tr>
+<td><strong>Emilia dataset</strong></td>
+<td>CC-BY-NC</td>
+<td>Cannot train commercial models</td>
+</tr>
+<tr>
+<td><strong>Orpheus TTS</strong></td>
+<td>Apache 2.0 <em>but</em> built on Llama 3.2</td>
+<td>Inherits Llama 3.2 Community License (700M MAU threshold, attribution) — usable with caveat</td>
+</tr>
+<tr>
+<td><strong>Chatterbox</strong></td>
+<td>MIT <em>but</em> built on Llama backbone</td>
+<td>Same Llama inheritance caveat</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="11-appendices">11. Appendices</h2>
+<h3 id="appendix-a-glossary">Appendix A — Glossary</h3>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>TTFA</strong></td>
+<td>Time-To-First-Audio — latency from text input to first playable audio chunk</td>
+</tr>
+<tr>
+<td><strong>Tanglish</strong></td>
+<td>Code-mixed Tamil + English in Latin and/or Tamil script (e.g., <code>Unga cab enga irukku?</code>)</td>
+</tr>
+<tr>
+<td><strong>CFM / DiT</strong></td>
+<td>Conditional Flow Matching / Diffusion Transformer — non-autoregressive generative architecture</td>
+</tr>
+<tr>
+<td><strong>VITS</strong></td>
+<td>Conditional VAE with adversarial learning — end-to-end TTS (GlowTTS encoder + HiFi-GAN decoder)</td>
+</tr>
+<tr>
+<td><strong>FastSpeech2</strong></td>
+<td>Non-autoregressive Transformer TTS with variance adaptor (duration/pitch/energy)</td>
+</tr>
+<tr>
+<td><strong>HiFi-GAN</strong></td>
+<td>Generative adversarial vocoder — mel-spectrogram → waveform</td>
+</tr>
+<tr>
+<td><strong>WFST</strong></td>
+<td>Weighted Finite-State Transducer — deterministic text normalization</td>
+</tr>
+<tr>
+<td><strong>ITN</strong></td>
+<td>Inverse Text Normalization — spoken → written form (e.g., &ldquo;forty eight twenty one&rdquo; → &ldquo;4821&rdquo;)</td>
+</tr>
+<tr>
+<td><strong>LoRA</strong></td>
+<td>Low-Rank Adaptation — parameter-efficient fine-tuning</td>
+</tr>
+<tr>
+<td><strong>TTN</strong></td>
+<td>Text Normalization</td>
+</tr>
+<tr>
+<td><strong>LID</strong></td>
+<td>Language Identification</td>
+</tr>
+<tr>
+<td><strong>MOS</strong></td>
+<td>Mean Opinion Score — subjective quality rating</td>
+</tr>
+<tr>
+<td><strong>WER</strong></td>
+<td>Word Error Rate — ASR-based intelligibility metric</td>
+</tr>
+<tr>
+<td><strong>FP8 / INT8</strong></td>
+<td>8-bit floating point / integer quantization</td>
+</tr>
+<tr>
+<td><strong>VADUSA</strong></td>
+<td>Verification-Agnostic Decoding with speculative execution</td>
+</tr>
+<tr>
+<td><strong>RTF</strong></td>
+<td>Real-Time Factor — synthesis speed vs audio duration</td>
+</tr>
+</tbody>
+</table>
+<h3 id="appendix-b-evaluation-stack">Appendix B — Evaluation Stack</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Tool</th>
+<th>License</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Objective MOS</td>
+<td>UTMOS / NISQA</td>
+<td>MIT</td>
+<td>Automated quality scoring</td>
+</tr>
+<tr>
+<td>Human MOS</td>
+<td>MANGO (246K ratings)</td>
+<td>CC-BY</td>
+<td>Tamil perceptual quality</td>
+</tr>
+<tr>
+<td>Intelligibility (Tamil)</td>
+<td>whisper-tamil (vasista22)</td>
+<td>MIT</td>
+<td>WER on Tamil ASR</td>
+</tr>
+<tr>
+<td>Intelligibility (Tanglish)</td>
+<td>Custom 200-utterance set</td>
+<td>—</td>
+<td>Code-switch WER + naturalness</td>
+</tr>
+<tr>
+<td>Naturalness (comparative)</td>
+<td>MUSHRA</td>
+<td>—</td>
+<td>Cross-tier voice consistency (S3) + S4 vs S1/S2</td>
+</tr>
+<tr>
+<td>Latency</td>
+<td>Custom harness</td>
+<td>—</td>
+<td>p50/p99 TTFA per tier</td>
+</tr>
+</tbody>
+</table>
+<h3 id="appendix-c-key-references">Appendix C — Key References</h3>
+<ul>
+<li>IndicF5 — <code>ai4bharat/IndicF5</code> (Apache 2.0, HF gated) — 337M CFM-DiT, 1,417h, 11 languages</li>
+<li>Indic Parler-TTS — <code>ai4bharat/indic-parler-tts</code> (Apache 2.0, gated) — 938M T5, 1,806h, 21 languages</li>
+<li>IndicVoices-R — CC-BY-4.0, 1,704h, 22 languages</li>
+<li>IndicLID — First LID for romanized Indic text, 47 classes (Apache 2.0)</li>
+<li>IndicXlit — 21 languages, Aksharantar 26M pairs (Apache 2.0)</li>
+<li>MeloTTS — <code>myshell-ai/MeloTTS</code> (MIT) — VITS/Bert-VITS2</li>
+<li>Kokoro-82M — <code>hexgrad/Kokoro-82M</code> (Apache 2.0) — StyleTTS2 + iSTFTNet</li>
+<li><strong>VITS</strong> — Conditional VAE with adversarial learning (MIT); Tamil checkpoint <code>samprabin/tamil_vits</code> (MIT)</li>
+<li><strong>FastSpeech2_HS</strong> — <code>smtiitm/FastSpeech2_HS_latest_models</code> (IIT Madras, MIT) — 16 Indian languages, Hybrid Segmentation</li>
+<li><strong>Coqui TTS</strong> — <code>coqui-tts</code> (MPL-2.0 code; community fork post Dec 2023 shutdown)</li>
+<li><strong>finetune-hf-vits</strong> — <code>ylacombe/finetune-hf-vits</code> (Apache 2.0) — 20-min / 80–150 sample recipe</li>
+<li><strong>VITS-fast-fine-tuning</strong> — <code>Plachtaa/VITS-fast-fine-tuning</code> (MIT)</li>
+<li>Vocos — MIT neural vocoder</li>
+<li>HiFi-GAN — Apache 2.0 (NeMo)</li>
+<li>Triton Inference Server — Apache 2.0, decoupled streaming</li>
+<li>vLLM / vLLM-Omni — Apache 2.0, continuous batching + DiffusionEngine</li>
+<li>TensorRT-LLM — Apache 2.0, FP8 quantization</li>
+<li>ONNX Runtime — MIT, CPU/GPU acceleration + INT8 quantization</li>
+</ul>
+<h3 id="appendix-d-document-conventions">Appendix D — Document Conventions</h3>
+<ul>
+<li>All $/h figures assume on-demand cloud pricing (A100 40GB ~$2.00/h, L4 24GB ~$0.80/h, CPU pool ~$0.50/8 vCPU). Reserved/committed pricing will be lower.</li>
+<li>TTFA budgets are p99 estimates under sustained load; p50 will be significantly lower.</li>
+<li>Cache hit rates assume transport-domain traffic with templated utterances; non-templated domains will see lower hit rates.</li>
+<li>License statuses verified against upstream repository LICENSE files at time of writing; re-verify before commercial deployment.</li>
+<li>Solution 4&rsquo;s Coqui reference is to the <strong>MPL-2.0 code</strong> (safe) — never the CPML XTTS-v2 weights.</li>
+</ul>
+<hr />
+<p><em>End of blueprint — v1.1 · August 2026 — Four solutions, one phased rollout</em></p>
+</div>
+
+</body>
+</html>

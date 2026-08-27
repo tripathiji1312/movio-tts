@@ -1,0 +1,30 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    command: redis-server --maxmemory 8gb --maxmemory-policy allkeys-lru
+
+  tts:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    environment:
+      HF_TOKEN: ${HF_TOKEN}
+      NVIDIA_VISIBLE_DEVICES: all
+    volumes:
+      - ../config:/app/config
+      - model-cache:/root/.cache/huggingface
+    ports: ["8000:8000"]
+    depends_on: [redis]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # Scale replicas for concurrency (3 per A100-40GB at FP16):
+    #   docker compose up -d --scale tts=3
+
+volumes:
+  model-cache:

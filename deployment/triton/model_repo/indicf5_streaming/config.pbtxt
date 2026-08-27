@@ -1,0 +1,55 @@
+# Triton Python backend — IndicF5 decoupled streaming model.
+# Place this config + the model.py in the same versioned directory:
+#   model_repo/indicf5_streaming/
+#     ├── config.pbtxt
+#     └── 1/model.py
+
+name: "indicf5_streaming"
+backend: "python"
+max_batch_size: 6
+
+model_transaction_policy {
+  decoupled: True
+}
+
+input [
+  {
+    name: "TEXT"
+    data_type: TYPE_STRING
+    dims: [ 1 ]
+  },
+  {
+    name: "VOICE"
+    data_type: TYPE_STRING
+    dims: [ 1 ]
+    optional: true
+  }
+]
+
+output [
+  {
+    name: "PCM_CHUNK"
+    data_type: TYPE_INT16
+    dims: [ -1 ]
+  }
+]
+
+dynamic_batching {
+  max_queue_delay_microseconds: 5000
+  preferred_batch_size: [ 4, 6 ]
+}
+
+instance_group [
+  { count: 3 kind: KIND_GPU gpus: [ 0 ] }
+]
+
+parameters {
+  key: "MODEL_ID"
+  value: { string_value: "ai4bharat/IndicF5" }
+}
+parameters {
+  key: "NUM_FLOW_STEPS"
+  value: { string_value: "12" }
+}
+
+version_policy { latest { num_versions: 1 } }

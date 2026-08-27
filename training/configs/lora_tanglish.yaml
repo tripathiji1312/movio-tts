@@ -1,0 +1,60 @@
+# LoRA fine-tune config — Tanglish adaptation of IndicF5 (v2 upgrade)
+# Designed to run end-to-end on Kaggle (P100 16GB or 2x T4).
+
+model:
+  base_model_id: "ai4bharat/IndicF5"   # gated: set HF_TOKEN secret on Kaggle
+  trust_remote_code: true
+
+lora:
+  rank: 32
+  alpha: 64
+  dropout: 0.05
+  # Target-module patterns are matched against model.named_modules().
+  # Run scripts/04_train_lora.py --list-modules first if training fails;
+  # then copy the transformer/attn block names here.
+  target_modules_patterns:
+    - "attention.qkv"
+    - "attention.proj"
+    - "attention.out"
+    - "feed_forward.w1"
+    - "feed_forward.w3"
+    - "feed_forward.w2"
+  bias: "none"
+
+data:
+  # Produced by scripts/02_prepare_corpus.py + scripts/03_build_dataset.py
+  manifest_train: "/kaggle/working/data/train.csv"
+  manifest_val: "/kaggle/working/data/val.csv"
+  audio_dir: "/kaggle/working/data/audio"
+  sample_rate: 24000
+  min_duration_s: 1.0
+  max_duration_s: 12.0
+  # Zero-shot reference pool used to sample (ref_audio, ref_text) prompts
+  ref_pool_csv: "/kaggle/working/data/ref_pool.csv"
+  num_ref_samples: 4
+
+train:
+  batch_size_per_device: 2
+  gradient_accumulation_steps: 8      # effective batch = 16 on 1 GPU
+  learning_rate: 1e-4
+  warmup_ratio: 0.05
+  num_epochs: 6
+  max_grad_norm: 1.0
+  weight_decay: 0.01
+  lr_scheduler: "cosine"
+  fp16: true                          # T4/P100 safe; switch bf16=true on A100/T4? keep fp16 here
+  gradient_checkpointing: true
+  logging_steps: 20
+  eval_steps: 200
+  save_steps: 400
+  seed: 42
+  output_dir: "/kaggle/working/checkpoints"
+
+export:
+  merged_output_dir: "/kaggle/working/indicf5_tanglish_merged"
+
+eval:
+  test_manifest: "/kaggle/working/data/test.csv"
+  utmos_model: "sarulab-speech/utmos22_strong"
+  whisper_model: "vasista22/whisper-tamil-base"
+  num_samples: 100

@@ -1,0 +1,9 @@
+# Voice profile — zero-shot reference for IndicF5.
+# Replace ref_audio with a clean 5-8s studio clip (24 kHz mono WAV) of the
+# target voice and paste its exact transcript below. IndicF5 clones this
+# speaker's timbre at inference time.
+name: ta_female_neutral
+ref_audio: ref.wav
+ref_text: "இது ஒரு மாதிரி குறிப்பு; உண்மையான குரல் கோப்பை இங்கே வைக்கவும்."
+gender: female
+style: neutral

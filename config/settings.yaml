@@ -1,0 +1,57 @@
+# Solution 1 — IndicF5 Modular Polyglot Pipeline configuration
+# All paths relative to repo root unless absolute.
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  ws_chunk_ms: 50          # streaming chunk size in milliseconds
+  sample_rate: 24000       # IndicF5 native output rate
+  opus_bitrate_kbps: 48
+
+stage_a:
+  text_normalization:
+    use_wfst: true              # indic-text-normalization (Kenpath, Pynini) if installed
+    wfst_language: "ta"
+    nemo_fallback: true         # nemo_text_processing WFST fallback if installed
+    domain_rules: true          # built-in OTP / phone / time / vehicle / currency rules (always on)
+    gazetteer_path: "config/gazetteer/proper_nouns.txt"
+
+stage_b:
+  router:
+    lid_backend: "auto"         # auto | indiclid | heuristic
+    xlit_backend: "auto"        # auto | indicxlit | none
+    lid_target_langs: ["ta", "en", "ta_roman"]
+    insert_cs_tokens: true
+    cs_token: "<cs>"
+    keep_proper_nouns_latin: true
+    gazetteer_path: "config/gazetteer/proper_nouns.txt"
+    max_xlit_word_len: 24       # skip transliteration for very long tokens
+
+stage_c:
+  model_id: "ai4bharat/IndicF5"
+  device: "cuda"                # cuda | cpu (cpu works but far too slow for production)
+  dtype: "float16"
+  num_flow_steps: 12            # 10-14 recommended; fewer = faster, slightly lower quality
+  sway_sampling_coef: -1.0
+  # zero-shot voice prompt (ref audio + transcript) shipped per voice profile
+  default_voice: "ta_female_neutral"
+  voices_dir: "config/voices"
+
+stage_d:
+  vocoder: "builtin"            # builtin | vocos
+  vocos_model_id: "charactr/vocos-mel-24khz"
+  crossfade_ms: 20
+
+cache:
+  backend: "redis"              # redis | memory
+  redis_url: "redis://localhost:6379/0"
+  ttl_seconds: 604800           # 7 days
+  max_audio_bytes_mb: 8
+
+pipeline:
+  enable_cache: true
+  stage_timeout_ms:
+    stage_a: 200
+    stage_b: 150
+    stage_c: 4000
+    stage_d: 1000
