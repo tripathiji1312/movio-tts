@@ -25,9 +25,55 @@ from pathlib import Path
 import numpy as np
 
 
-def find_transcript_pairs(raw_dir: Path):
-    """Yield (audio_path, transcript) pairs from known dataset layouts."""
-    # Layout A: transcripts.tsv sidecar files (custom recordings)
+def find_transcript_pairs(raw_dir: Path, delete_parquets: bool = False):
+    """Yield (audio_path_or_data, transcript) pairs from known dataset layouts.
+
+    For parquet-embedded audio: yields (dict with 'array' and 'sampling_rate', transcript).
+    For standalone wavs: yields (Path, transcript).
+    """
+    # Layout A: HuggingFace parquet files with embedded audio columns
+    parquets = sorted(raw_dir.rglob("*.parquet"))
+    if parquets:
+        import pandas as pd
+
+        print(f"  extracting audio from {len(parquets)} parquet files...")
+        for pq_path in parquets:
+            try:
+                df = pd.read_parquet(pq_path)
+            except Exception as exc:
+                print(f"  skip unreadable parquet {pq_path.name}: {exc}")
+                continue
+            # Detect audio and text columns
+            audio_col = None
+            for col in ("audio", "Audio", "speech", "input_values"):
+                if col in df.columns:
+                    audio_col = col
+                    break
+            text_col = None
+            for col in ("transcript", "text", "sentence", "transcription", "raw_text"):
+                if col in df.columns:
+                    text_col = col
+                    break
+            if audio_col is None or text_col is None:
+                print(f"  skip {pq_path.name}: missing audio/text columns "
+                      f"(found: {list(df.columns)[:10]})")
+                continue
+            for idx, row in df.iterrows():
+                transcript = row[text_col]
+                if not transcript or not isinstance(transcript, str):
+                    continue
+                audio_data = row[audio_col]
+                if isinstance(audio_data, dict):
+                    yield audio_data, transcript.strip()
+                elif isinstance(audio_data, bytes):
+                    yield {"bytes": audio_data}, transcript.strip()
+            del df
+            if delete_parquets:
+                pq_path.unlink(missing_ok=True)
+                print(f"  freed {pq_path.name}")
+        return
+
+    # Layout B: transcripts.tsv sidecar files (custom recordings)
     for tsv in raw_dir.rglob("*.tsv"):
         with open(tsv, encoding="utf-8") as fh:
             for line in fh:
@@ -40,7 +86,7 @@ def find_transcript_pairs(raw_dir: Path):
                             wav = cand
                     if wav.exists():
                         yield wav, parts[1]
-    # Layout B: indicvoices_r style — wav next to same-stem .json/.txt
+    # Layout C: indicvoices_r style — wav next to same-stem .json/.txt
     for wav in raw_dir.rglob("*.wav"):
         stem = wav.with_suffix("")
         transcript = None
@@ -100,6 +146,8 @@ def main():
     ap.add_argument("--min-dur", type=float, default=1.0)
     ap.add_argument("--max-dur", type=float, default=12.0)
     ap.add_argument("--min-snr", type=float, default=12.0)
+    ap.add_argument("--delete-parquets", action="store_true",
+                    help="Delete parquet files after extraction to free disk space.")
     ap.add_argument("--val-frac", type=float, default=0.03)
     ap.add_argument("--test-frac", type=float, default=0.03)
     ap.add_argument("--seed", type=int, default=42)
@@ -115,33 +163,67 @@ def main():
 
     rows = []
     seen_hashes = set()
-    for wav_path, text in find_transcript_pairs(raw_dir):
+    skipped = {"unreadable": 0, "duration": 0, "snr": 0, "dup": 0}
+    for audio_src, text in find_transcript_pairs(raw_dir, delete_parquets=args.delete_parquets):
         try:
-            audio, orig_sr = librosa.load(str(wav_path), sr=args.sample_rate, mono=True)
+            if isinstance(audio_src, dict):
+                # Parquet-embedded audio
+                if "array" in audio_src:
+                    audio = np.array(audio_src["array"], dtype=np.float32)
+                    src_sr = audio_src.get("sampling_rate", 16000)
+                elif "bytes" in audio_src:
+                    import io
+                    audio, src_sr = sf.read(io.BytesIO(audio_src["bytes"]))
+                    audio = audio.astype(np.float32)
+                elif "path" in audio_src and audio_src.get("path"):
+                    audio, src_sr = librosa.load(audio_src["path"], sr=None, mono=True)
+                else:
+                    skipped["unreadable"] += 1
+                    continue
+                if audio.ndim > 1:
+                    audio = audio.mean(axis=1)
+                if src_sr != args.sample_rate:
+                    audio = librosa.resample(audio, orig_sr=src_sr, target_sr=args.sample_rate)
+                source_name = "indicvoices_r"
+            else:
+                # Standalone wav file
+                audio, _ = librosa.load(str(audio_src), sr=args.sample_rate, mono=True)
+                source_name = audio_src.parent.name
         except Exception as exc:
-            print(f"skip unreadable {wav_path}: {exc}")
+            skipped["unreadable"] += 1
+            if skipped["unreadable"] <= 5:
+                print(f"skip unreadable: {exc}")
             continue
+
         dur = len(audio) / args.sample_rate
         if not (args.min_dur <= dur <= args.max_dur):
+            skipped["duration"] += 1
             continue
         if snr_proxy(audio) < args.min_snr:
+            skipped["snr"] += 1
             continue
         audio = trim_silence(audio, args.sample_rate)
         h = hash(audio.tobytes())
         if h in seen_hashes:
+            skipped["dup"] += 1
             continue
         seen_hashes.add(h)
 
-        fname = f"utt_{len(rows):07d}_{wav_path.stem}.wav"
+        fname = f"utt_{len(rows):07d}.wav"
         sf.write(audio_out / fname, audio, args.sample_rate, subtype="PCM_16")
         rows.append(
             {
                 "audio": str(audio_out / fname),
                 "text": text.strip(),
                 "duration_s": round(len(audio) / args.sample_rate, 3),
-                "source": wav_path.parent.name,
+                "source": source_name,
             }
         )
+        if len(rows) % 1000 == 0:
+            print(f"  processed {len(rows)} utterances...")
+
+    print(f"Skipped: {skipped}")
+    print(f"Kept: {len(rows)} utterances")
 
     random.Random(args.seed).shuffle(rows)
     n_val = max(1, int(len(rows) * args.val_frac))

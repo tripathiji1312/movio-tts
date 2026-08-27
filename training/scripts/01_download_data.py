@@ -137,15 +137,23 @@ def main():
     path = str(local_dir)
     print(f"Saved to: {path}")
 
+    # Remove HF cache to reclaim disk (metadata files, not the actual data)
+    cache_dir = local_dir / ".cache"
+    if cache_dir.exists():
+        shutil.rmtree(cache_dir)
+        print("Cleaned up .cache directory")
+
     # Diagnostics
-    top = list(Path(path).rglob("*"))[:20]
-    print("Top-level sample:", [str(p.relative_to(path)) for p in top[:10]])
+    n_parquet = len(list(Path(path).rglob("*.parquet")))
     n_wav = (len(list(Path(path).rglob("*.wav")))
              + len(list(Path(path).rglob("*.mp3")))
              + len(list(Path(path).rglob("*.flac"))))
-    print(f"Diagnostic wav/mp3/flac count: {n_wav}")
-    if n_wav == 0:
-        print("WARNING: 0 audio found. Listing all files matched by allow patterns:")
+    print(f"Parquet files: {n_parquet} | Standalone audio files: {n_wav}")
+    if n_parquet > 0:
+        print("Audio is embedded in parquet files (HuggingFace datasets format).")
+        print("Step 02_prepare_corpus.py will extract and process audio from parquets.")
+    elif n_wav == 0:
+        print("WARNING: 0 audio found. Listing files:")
         for p in sorted(Path(path).rglob("*"))[:50]:
             print(" ", p.relative_to(path))
 
