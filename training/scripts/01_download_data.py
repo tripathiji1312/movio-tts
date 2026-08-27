@@ -84,7 +84,7 @@ def main():
     for info in all_files:
         if not hasattr(info, "size") or info.size is None:
             continue
-        rpath = info.rpath
+        rpath = info.path
         if any(fnmatch.fnmatch(rpath, pat) for pat in allow):
             matched.append((rpath, info.size))
 
