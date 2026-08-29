@@ -195,7 +195,7 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
         "--batch_size_per_gpu", str(batch_size * 24000 * 10),  # frames: batch * sr * ~10s
         "--batch_size_type", "frame",
         "--max_samples", str(batch_size),
-        "--learning_rate", "1e-5",
+        "--learning_rate", "7e-6",
         "--num_warmup_updates", "200",
         "--save_per_updates", "50000",
         "--last_per_updates", "2000",

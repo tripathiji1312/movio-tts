@@ -41,7 +41,7 @@ def load_f5tts_model(model_dir: str, f5tts_src: Path, device: str):
     if f5tts_src_str not in sys.path:
         sys.path.insert(0, f5tts_src_str)
 
-    from f5_tts.model import DiT
+    from f5_tts.model.backbones.dit import DiT  # bypass __init__ to avoid Trainer→dataset→hub chain
     from f5_tts.infer.utils_infer import load_vocoder, load_checkpoint
 
     model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
@@ -65,7 +65,7 @@ def load_f5tts_model(model_dir: str, f5tts_src: Path, device: str):
     from f5_tts.infer.utils_infer import get_tokenizer
     vocab_char_map, vocab_size = get_tokenizer(vocab_path, "custom")
 
-    from f5_tts.model import CFM
+    from f5_tts.model.cfm import CFM  # bypass __init__ to avoid Trainer→dataset→hub chain
 
     model = CFM(
         transformer=DiT(**model_cfg, text_num_embeds=vocab_size, mel_dim=100),
