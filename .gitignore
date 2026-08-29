@@ -15,7 +15,9 @@ build/
 *.wav
 *.mp3
 model-cache/
+models/
 checkpoints/
 hf_cache/
+output/
 .ipynb_checkpoints/
 .DS_Store

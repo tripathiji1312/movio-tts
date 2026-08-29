@@ -33,6 +33,22 @@ def crossfade(a: np.ndarray, b: np.ndarray, n_samples: int) -> np.ndarray:
     return np.concatenate([head, mixed, b[n_samples:]])
 
 
+def trim_silence(audio: np.ndarray, threshold_db: float = -40.0,
+                 min_silence_ms: float = 50.0, sample_rate: int = 22050) -> np.ndarray:
+    """Trim leading and trailing silence, keeping a small natural pad."""
+    if len(audio) == 0:
+        return audio
+    threshold = 10 ** (threshold_db / 20.0)
+    pad_samples = int(min_silence_ms * sample_rate / 1000.0)
+    abs_audio = np.abs(audio)
+    above = np.where(abs_audio > threshold)[0]
+    if len(above) == 0:
+        return audio[:pad_samples]
+    start = max(0, above[0] - pad_samples)
+    end = min(len(audio), above[-1] + pad_samples)
+    return audio[start:end]
+
+
 def ms_to_samples(ms: float, sample_rate: int) -> int:
     return int(round(ms * sample_rate / 1000.0))
 

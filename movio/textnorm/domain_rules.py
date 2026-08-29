@@ -171,6 +171,11 @@ class DomainRuleEngine:
                 else:
                     period = "காலை" if h < 12 else "மதியம்" if h < 16 else "மாலை" if h < 20 else "இரவு"
                 minute_part = f" {numfn(mi)} நிமிடம்" if mi else ""
+                # Check if the period word already precedes the time in the text
+                start = m.start()
+                prefix = text[max(0, start - 10):start]
+                if period in prefix:
+                    return f"{numfn(h12(h))} மணி{minute_part}"
                 return f"{period} {numfn(h12(h))} மணி{minute_part}"
             if explicit_am:
                 period = "AM"

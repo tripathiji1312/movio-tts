@@ -1,8 +1,10 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from movio.pipeline import SynthesisRequest, TTSPipeline
@@ -29,7 +31,21 @@ async def lifespan(app: FastAPI):
     pipeline = None
 
 
-app = FastAPI(title="movio TTS — Solution 1", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="movio TTS — Solution 4 (VITS+FastSpeech2)", version="0.2.0", lifespan=lifespan)
+
+STATIC_DIR = Path(__file__).parent / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.get("/")
+async def root():
+    from fastapi.responses import FileResponse
+
+    index = STATIC_DIR / "index.html"
+    if index.exists():
+        return FileResponse(str(index))
+    return {"message": "movio TTS API — see /docs"}
 
 
 class TTSRequest(BaseModel):
@@ -45,7 +61,12 @@ async def healthz():
 
 @app.get("/voices")
 async def voices():
-    return {"voices": list(pipeline.engine.voices.keys())}
+    return {"voices": ["default"]}
+
+
+@app.get("/engine/stats")
+async def engine_stats():
+    return pipeline.engine.stats
 
 
 @app.post("/tts")

@@ -169,6 +169,22 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
         trainer_py.write_text(trainer_src)
         print("Patched trainer.py for text embedding resize")
 
+    # Free disk before training: remove raw data (already extracted to wavs)
+    import shutil as _shutil
+    raw_dir = Path("/kaggle/working/raw")
+    if raw_dir.exists():
+        _shutil.rmtree(raw_dir, ignore_errors=True)
+        print(f"Freed disk: removed {raw_dir}")
+    # Remove HF cache only if pretrained model already in ckpts (it gets copied there)
+    ckpt_dir = workdir / "ckpts" / dataset_name
+    if any(ckpt_dir.glob("pretrained_*")) or any(ckpt_dir.glob("model_*")):
+        hf_cache = Path("/root/.cache/huggingface/hub")
+        if hf_cache.exists():
+            _shutil.rmtree(hf_cache, ignore_errors=True)
+            print("Freed disk: removed HF cache (pretrained already in ckpts)")
+    free_gb = _shutil.disk_usage("/kaggle/working").free / (1024**3)
+    print(f"Disk free before training: {free_gb:.1f} GB")
+
     # Run finetune CLI with correct args
     finetune_script = workdir / "src" / "f5_tts" / "train" / "finetune_cli.py"
     cmd = [
@@ -182,8 +198,9 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
         "--max_samples", str(batch_size),
         "--learning_rate", "1e-5",
         "--num_warmup_updates", "200",
-        "--save_per_updates", "1000",
-        "--last_per_updates", "500",
+        "--save_per_updates", "50000",
+        "--last_per_updates", "3000",
+        "--keep_last_n_checkpoints", "0",
         "--finetune",
     ]
     print("Running:", " ".join(cmd))

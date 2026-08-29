@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movio TTS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 700px;
+            width: 100%;
+        }
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+            color: #fff;
+        }
+        .subtitle {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 0.4rem;
+        }
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+            padding: 0.8rem 1rem;
+            resize: vertical;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #4a9eff;
+        }
+        .presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .preset-btn {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #ccc;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .preset-btn:hover {
+            border-color: #4a9eff;
+            color: #fff;
+        }
+        .btn-row {
+            display: flex;
+            gap: 0.8rem;
+            margin-bottom: 1.5rem;
+        }
+        button.primary {
+            background: #4a9eff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.7rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button.primary:hover { background: #3a8eef; }
+        button.primary:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+        button.secondary {
+            background: transparent;
+            color: #aaa;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 0.7rem 1.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button.secondary:hover { border-color: #666; color: #fff; }
+        .result {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .result.show { display: block; }
+        .result audio {
+            width: 100%;
+            margin-bottom: 0.8rem;
+        }
+        .meta {
+            font-size: 0.8rem;
+            color: #888;
+            line-height: 1.6;
+        }
+        .meta span {
+            color: #4a9eff;
+            font-weight: 500;
+        }
+        .status {
+            font-size: 0.85rem;
+            padding: 0.6rem 0;
+            color: #888;
+        }
+        .status.error { color: #ff6b6b; }
+        .status.loading { color: #ffd93d; }
+        .stats-bar {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            padding-top: 0.8rem;
+            border-top: 1px solid #222;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .stats-bar .stat-val { color: #4a9eff; }
+        @media (max-width: 600px) {
+            body { padding: 1rem; }
+            h1 { font-size: 1.4rem; }
+            .btn-row { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Movio TTS</h1>
+        <p class="subtitle">Tamil / English / Tanglish — VITS + FastSpeech2 cascaded stack</p>
+
+        <div class="input-group">
+            <label for="text-input">Text to synthesize</label>
+            <textarea id="text-input" placeholder="Type Tamil, English, or Tanglish text here...">உங்கள் கேப் 5 நிமிடத்தில் வரும்.</textarea>
+        </div>
+
+        <div class="presets">
+            <button class="preset-btn" data-text="உங்கள் கேப் 5 நிமிடத்தில் வரும்.">Tamil</button>
+            <button class="preset-btn" data-text="Your OTP is 4832. Please share it with the driver.">English</button>
+            <button class="preset-btn" data-text="Unga booking confirm aayiduchu. Driver name Rajesh.">Tanglish</button>
+            <button class="preset-btn" data-text="உங்கள் ஓட்டுநர் TN45AB1234 வண்டியில் வருகிறார்.">Vehicle ID</button>
+            <button class="preset-btn" data-text="The fare is Rs. 350 for 8.5 km.">Fare</button>
+            <button class="preset-btn" data-text="காலை 7:30-க்கு pickup ready-யா இருங்க.">Time</button>
+        </div>
+
+        <div class="btn-row">
+            <button class="primary" id="synth-btn" onclick="synthesize()">Synthesize</button>
+            <button class="secondary" id="stream-btn" onclick="streamAudio()">Stream (WebSocket)</button>
+        </div>
+
+        <div class="status" id="status"></div>
+
+        <div class="result" id="result">
+            <audio id="audio-player" controls></audio>
+            <div class="meta" id="meta"></div>
+        </div>
+
+        <div class="stats-bar">
+            <div>Engine: <span class="stat-val" id="stat-engine">—</span></div>
+            <div>VITS: <span class="stat-val" id="stat-vits">—</span></div>
+            <div>FS2: <span class="stat-val" id="stat-fs2">—</span></div>
+        </div>
+    </div>
+
+    <script>
+        const textarea = document.getElementById('text-input');
+        const status = document.getElementById('status');
+        const result = document.getElementById('result');
+        const audioPlayer = document.getElementById('audio-player');
+        const meta = document.getElementById('meta');
+        const synthBtn = document.getElementById('synth-btn');
+
+        // Presets
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                textarea.value = btn.dataset.text;
+            });
+        });
+
+        // Fetch engine stats
+        async function fetchStats() {
+            try {
+                const r = await fetch('/engine/stats');
+                const d = await r.json();
+                document.getElementById('stat-engine').textContent = 'Cascaded';
+                document.getElementById('stat-vits').textContent = d.vits_ready ? 'Ready' : 'Off';
+                document.getElementById('stat-fs2').textContent = d.fs2_ready ? 'Ready' : 'Off';
+            } catch(e) {}
+        }
+        fetchStats();
+
+        async function synthesize() {
+            const text = textarea.value.trim();
+            if (!text) return;
+
+            synthBtn.disabled = true;
+            status.className = 'status loading';
+            status.textContent = 'Synthesizing...';
+            result.classList.remove('show');
+
+            const t0 = performance.now();
+            try {
+                const resp = await fetch('/tts', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text})
+                });
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    throw new Error(err.detail || resp.statusText);
+                }
+                const data = await resp.json();
+                const elapsed = (performance.now() - t0).toFixed(0);
+
+                // Play audio
+                const audioBytes = atob(data.audio_wav_base64);
+                const audioArray = new Uint8Array(audioBytes.length);
+                for (let i = 0; i < audioBytes.length; i++) {
+                    audioArray[i] = audioBytes.charCodeAt(i);
+                }
+                const blob = new Blob([audioArray], {type: 'audio/wav'});
+                audioPlayer.src = URL.createObjectURL(blob);
+                audioPlayer.play();
+
+                // Show metadata
+                meta.innerHTML = `
+                    <div>Normalized: <span>${data.normalized_text}</span></div>
+                    <div>Stage A: <span>${data.timings.stage_a_ms}ms</span> |
+                         Stage B: <span>${data.timings.stage_b_ms}ms</span> |
+                         Stage C: <span>${data.timings.stage_c_first_chunk_ms}ms</span></div>
+                    <div>Total (server): <span>${data.timings.total_ms}ms</span> |
+                         Total (e2e): <span>${elapsed}ms</span> |
+                         Cache: <span>${data.timings.cache_hit ? 'HIT' : 'MISS'}</span></div>
+                `;
+                result.classList.add('show');
+                status.className = 'status';
+                status.textContent = '';
+                fetchStats();
+            } catch(e) {
+                status.className = 'status error';
+                status.textContent = 'Error: ' + e.message;
+            }
+            synthBtn.disabled = false;
+        }
+
+        async function streamAudio() {
+            const text = textarea.value.trim();
+            if (!text) return;
+
+            status.className = 'status loading';
+            status.textContent = 'Streaming...';
+            result.classList.remove('show');
+
+            const wsUrl = `ws://${location.host}/tts/stream`;
+            const ws = new WebSocket(wsUrl);
+            const chunks = [];
+            let ttfa = null;
+            const t0 = performance.now();
+
+            ws.onopen = () => {
+                ws.send(JSON.stringify({text}));
+            };
+
+            ws.onmessage = (event) => {
+                if (event.data instanceof Blob) {
+                    if (ttfa === null) ttfa = (performance.now() - t0).toFixed(0);
+                    chunks.push(event.data);
+                } else {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === 'end') {
+                        const totalMs = (performance.now() - t0).toFixed(0);
+                        const blob = new Blob(chunks, {type: 'audio/pcm'});
+                        // Convert PCM16 to WAV for playback
+                        blob.arrayBuffer().then(buf => {
+                            const wav = pcm16ToWav(new Int16Array(buf), 22050);
+                            audioPlayer.src = URL.createObjectURL(wav);
+                            audioPlayer.play();
+                        });
+                        meta.innerHTML = `
+                            <div>TTFA: <span>${ttfa}ms</span> | Total: <span>${totalMs}ms</span> | Chunks: <span>${chunks.length}</span></div>
+                        `;
+                        result.classList.add('show');
+                        status.className = 'status';
+                        status.textContent = '';
+                        ws.close();
+                    } else if (msg.type === 'error') {
+                        status.className = 'status error';
+                        status.textContent = 'Error: ' + msg.message;
+                        ws.close();
+                    }
+                }
+            };
+
+            ws.onerror = () => {
+                status.className = 'status error';
+                status.textContent = 'WebSocket connection failed';
+            };
+        }
+
+        function pcm16ToWav(samples, sampleRate) {
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const byteRate = sampleRate * numChannels * bitsPerSample / 8;
+            const blockAlign = numChannels * bitsPerSample / 8;
+            const dataSize = samples.length * 2;
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+
+            // WAV header
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + dataSize, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, dataSize, true);
+
+            // PCM data
+            const offset = 44;
+            for (let i = 0; i < samples.length; i++) {
+                view.setInt16(offset + i * 2, samples[i], true);
+            }
+            return new Blob([buffer], {type: 'audio/wav'});
+        }
+
+        function writeString(view, offset, str) {
+            for (let i = 0; i < str.length; i++) {
+                view.setUint8(offset + i, str.charCodeAt(i));
+            }
+        }
+
+        // Enter key to synthesize
+        textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                synthesize();
+            }
+        });
+    </script>
+</body>
+</html>
