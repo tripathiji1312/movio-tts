@@ -21,7 +21,13 @@ def main():
     from transformers import AutoModel
 
     print("Loading base...")
-    base = AutoModel.from_pretrained(args.base_model, trust_remote_code=True)
+    # transformers uses init_empty_weights() (meta tensors) during __init__ when
+    # low_cpu_mem_usage=True (the default). IndicF5's __init__ builds a Vocos
+    # vocoder which calls torchaudio.transforms.MelSpectrogram → .any() → crash
+    # on meta tensors. low_cpu_mem_usage=False uses real CPU tensors throughout.
+    base = AutoModel.from_pretrained(
+        args.base_model, trust_remote_code=True, low_cpu_mem_usage=False
+    )
 
     print("Attaching adapter...")
     model = PeftModel.from_pretrained(base, args.adapter_dir)

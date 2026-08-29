@@ -169,21 +169,20 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
         trainer_py.write_text(trainer_src)
         print("Patched trainer.py for text embedding resize")
 
-    # Free disk before training: remove raw data (already extracted to wavs)
+    # Aggressively free disk before training
     import shutil as _shutil
-    raw_dir = Path("/kaggle/working/raw")
-    if raw_dir.exists():
-        _shutil.rmtree(raw_dir, ignore_errors=True)
-        print(f"Freed disk: removed {raw_dir}")
-    # Remove HF cache only if pretrained model already in ckpts (it gets copied there)
-    ckpt_dir = workdir / "ckpts" / dataset_name
-    if any(ckpt_dir.glob("pretrained_*")) or any(ckpt_dir.glob("model_*")):
-        hf_cache = Path("/root/.cache/huggingface/hub")
-        if hf_cache.exists():
-            _shutil.rmtree(hf_cache, ignore_errors=True)
-            print("Freed disk: removed HF cache (pretrained already in ckpts)")
+    for cleanup_dir in [
+        Path("/kaggle/working/raw"),
+        Path("/root/.cache/huggingface/hub"),
+        Path("/root/.cache/pip"),
+    ]:
+        if cleanup_dir.exists():
+            _shutil.rmtree(cleanup_dir, ignore_errors=True)
+            print(f"Freed disk: removed {cleanup_dir}")
     free_gb = _shutil.disk_usage("/kaggle/working").free / (1024**3)
     print(f"Disk free before training: {free_gb:.1f} GB")
+    if free_gb < 12:
+        print(f"WARNING: only {free_gb:.1f} GB free — checkpoints are ~5 GB each, training may fail")
 
     # Run finetune CLI with correct args
     finetune_script = workdir / "src" / "f5_tts" / "train" / "finetune_cli.py"
@@ -199,20 +198,32 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
         "--learning_rate", "1e-5",
         "--num_warmup_updates", "200",
         "--save_per_updates", "50000",
-        "--last_per_updates", "3000",
-        "--keep_last_n_checkpoints", "0",
+        "--last_per_updates", "2000",
+        "--keep_last_n_checkpoints", "1",
         "--finetune",
     ]
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, check=True, cwd=str(workdir))
 
-    # Copy final checkpoint to output dir
+    # Keep only the final checkpoint (model_last.pt) to save disk for export
     ckpt_dir = workdir / "ckpts" / dataset_name
     if ckpt_dir.exists():
         import shutil
-        for pt in sorted(ckpt_dir.glob("*.pt")) + sorted(ckpt_dir.glob("*.safetensors")):
-            shutil.copy2(pt, out_dir / pt.name)
-            print(f"Copied checkpoint: {pt.name}")
+        last_pt = ckpt_dir / "model_last.pt"
+        if last_pt.exists():
+            shutil.copy2(last_pt, out_dir / last_pt.name)
+            print(f"Copied checkpoint: {last_pt.name}")
+        # Remove all intermediate checkpoints to free disk for merge/export
+        for pt in list(ckpt_dir.glob("model_*.pt")):
+            if pt.name != "model_last.pt":
+                pt.unlink(missing_ok=True)
+                print(f"Removed intermediate: {pt.name}")
+        safetensors = ckpt_dir / "pretrained_model_1250000.safetensors"
+        if safetensors.exists():
+            safetensors.unlink(missing_ok=True)
+            print("Removed pretrained safetensors (no longer needed)")
+    free_gb = _shutil.disk_usage("/kaggle/working").free / (1024**3)
+    print(f"Disk free after training: {free_gb:.1f} GB")
     print(f"Checkpoints in: {out_dir}")
 
 
