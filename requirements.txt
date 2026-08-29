@@ -1,6 +1,6 @@
 # This file is kept for compatibility (Docker, Kaggle, etc.)
 # The canonical dependency source is pyproject.toml — use `uv sync` to install.
-numpy>=1.26,<2.0
+numpy>=1.26
 PyYAML>=6.0
 soundfile>=0.12
 librosa>=0.10
