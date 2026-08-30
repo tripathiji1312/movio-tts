@@ -1,12 +1,15 @@
-"""04 — LoRA fine-tune of IndicF5 on Tanglish corpus (Kaggle GPU).
+"""04 — Fine-tune ai4bharat/IndicF5 on Tanglish corpus (Kaggle GPU).
 
 Two supported paths:
-  --path f5tts   (RECOMMENDED) drives the SWivid/F5-TTS finetuning framework,
-                 which is the native trainer family for IndicF5. Uses the
-                 metadata.csv produced by 03_build_dataset.py.
+  --path f5tts   (RECOMMENDED) drives the SWivid/F5-TTS finetuning framework
+                 starting from ai4bharat/IndicF5 weights (MIT licensed).
   --path peft    experimental custom PEFT LoRA loop against the HF
                  trust_remote_code model. Run with --list-modules first to
                  confirm target-module names in your pinned revision.
+
+License note:
+  Base model: ai4bharat/IndicF5 (MIT) — commercially usable fine-tuned weights.
+  Fine-tuning framework code: SWivid/F5-TTS (CC BY-NC 4.0) — training-time only.
 
 Examples (Kaggle):
     python training/scripts/04_train_lora.py --path f5tts \
@@ -81,10 +84,47 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
     print(f"Building Arrow dataset: {len(texts)} utterances, "
           f"{sum(durations)/3600:.1f}h total")
 
-    # Use the pretrained model's vocab and extend with any new Tamil characters.
-    # The pretrained F5TTS_v1_Base uses a 2546-char vocab; we must keep it intact
-    # and append new chars so the pretrained embeddings remain aligned.
-    pretrained_vocab_path = workdir / "src" / "f5_tts" / "infer" / "examples" / "vocab.txt"
+    # Download ai4bharat/IndicF5 base weights (MIT — commercially usable).
+    # IndicF5 is the better starting point: already knows Tamil phonemes + script,
+    # same CFM-DiT architecture as F5-TTS, and MIT-licensed for commercial use.
+    from huggingface_hub import hf_hub_download, snapshot_download
+    import shutil as _shutil
+
+    indicf5_ckpt_dir = out_dir / "indicf5_base"
+    indicf5_ckpt_dir.mkdir(parents=True, exist_ok=True)
+
+    # IndicF5 on HF is stored as a safetensors model — download model + vocab
+    print("Downloading ai4bharat/IndicF5 weights (MIT) ...")
+    try:
+        indicf5_model_file = hf_hub_download(
+            "ai4bharat/IndicF5", filename="model.safetensors",
+            local_dir=str(indicf5_ckpt_dir),
+        )
+    except Exception:
+        # Fallback: full snapshot (includes vocab.txt and config)
+        snapshot_download("ai4bharat/IndicF5", local_dir=str(indicf5_ckpt_dir))
+        indicf5_model_file = str(indicf5_ckpt_dir / "model.safetensors")
+
+    # IndicF5 ships its own vocab — use it as the base vocab so Tamil chars are
+    # already present without needing to resize embeddings.
+    indicf5_vocab_candidates = [
+        indicf5_ckpt_dir / "vocab.txt",
+        indicf5_ckpt_dir / "src" / "f5_tts" / "infer" / "examples" / "vocab.txt",
+    ]
+    indicf5_vocab_file = None
+    for cand in indicf5_vocab_candidates:
+        if cand.exists():
+            indicf5_vocab_file = cand
+            break
+    if indicf5_vocab_file is None:
+        # IndicF5 doesn't ship a standalone vocab.txt — fall back to F5-TTS default
+        # (same 2546-char vocab; Tamil chars will be appended as new_chars)
+        indicf5_vocab_file = workdir / "src" / "f5_tts" / "infer" / "examples" / "vocab.txt"
+    print(f"Using vocab: {indicf5_vocab_file}")
+
+    # Use the base vocab and extend with any new Tamil characters.
+    # IndicF5's vocab already covers Tamil Unicode; new_chars will likely be 0.
+    pretrained_vocab_path = indicf5_vocab_file
     with open(pretrained_vocab_path, "r", encoding="utf-8") as f:
         pretrained_vocab = [line.rstrip("\n") for line in f]
     # First char should be space (idx 0)
@@ -196,13 +236,16 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
     if free_gb < 12:
         print(f"WARNING: only {free_gb:.1f} GB free — checkpoints are ~5 GB each, training may fail")
 
-    # Run finetune CLI with correct args
+    # Run finetune CLI starting from ai4bharat/IndicF5 weights (MIT).
+    # --pretrain overrides the default SWivid pretrained download so
+    # the derived checkpoint is MIT-compatible for commercial use.
     finetune_script = workdir / "src" / "f5_tts" / "train" / "finetune_cli.py"
     cmd = [
         sys.executable, str(finetune_script),
         "--exp_name", "F5TTS_v1_Base",
         "--dataset_name", dataset_name,
         "--tokenizer", tokenizer,
+        "--pretrain", str(indicf5_model_file),   # ← IndicF5 base (MIT, not SWivid CC BY-NC)
         "--epochs", str(epochs),
         "--batch_size_per_gpu", str(batch_size * 24000 * 10),  # frames: batch * sr * ~10s
         "--batch_size_type", "frame",
@@ -230,10 +273,9 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
             if pt.name != "model_last.pt":
                 pt.unlink(missing_ok=True)
                 print(f"Removed intermediate: {pt.name}")
-        safetensors = ckpt_dir / "pretrained_model_1250000.safetensors"
-        if safetensors.exists():
+        for safetensors in list(ckpt_dir.glob("pretrained_*.safetensors")):
             safetensors.unlink(missing_ok=True)
-            print("Removed pretrained safetensors (no longer needed)")
+            print(f"Removed pretrained safetensors: {safetensors.name}")
     free_gb = _shutil.disk_usage("/kaggle/working").free / (1024**3)
     print(f"Disk free after training: {free_gb:.1f} GB")
     print(f"Checkpoints in: {out_dir}")

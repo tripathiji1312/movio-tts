@@ -102,7 +102,7 @@ def main():
         "tokenizer": "char",
         "sample_rate": 24000,
         "n_mel_channels": 100,
-        "finetune_base": "SWivid/F5-TTS:F5TTS_v1_Base",
+        "finetune_base": "ai4bharat/IndicF5",
     }
     with open(out / "config.json", "w") as f:
         json.dump(config, f, indent=2)

@@ -1,4 +1,15 @@
+"""IndicF5Engine — F5-TTS CFM-DiT acoustic backbone (337M params, 24 kHz).
+
+Uses the F5-TTS inference stack directly. Supports both the ai4bharat/IndicF5
+base model (MIT licensed) and a locally exported fine-tuned bundle.
+
+model_path config options:
+  "base"             — downloads ai4bharat/IndicF5 weights from HF hub (MIT)
+  "/path/to/bundle"  — fine-tuned bundle dir (model.pt + vocab.txt + config.json)
+"""
+
 import logging
+import sys
 from pathlib import Path
 from typing import Iterator
 
@@ -24,7 +35,6 @@ def load_voice_profiles(voices_dir: str | Path) -> dict[str, VoiceProfile]:
         return profiles
     for meta_path in sorted(voices_dir.glob("*/voice.yaml")):
         import yaml
-
         meta = yaml.safe_load(meta_path.read_text(encoding="utf-8"))
         audio_rel = meta.get("ref_audio")
         profile = VoiceProfile(
@@ -36,53 +46,149 @@ def load_voice_profiles(voices_dir: str | Path) -> dict[str, VoiceProfile]:
     return profiles
 
 
-class IndicF5Engine:
-    """Stage C — IndicF5 acoustic backbone (337M CFM-DiT).
+def _patch_f5tts_init(f5tts_src: Path) -> None:
+    """Wrap Trainer import in try/except so __init__.py doesn't trigger
+    dataset.py → datasets 5.0.0 → huggingface_hub.parse_hf_uri crash."""
+    init_py = f5tts_src / "src" / "f5_tts" / "model" / "__init__.py"
+    if not init_py.exists():
+        return
+    src = init_py.read_text()
+    if "try:" not in src and "from f5_tts.model.trainer import Trainer" in src:
+        src = src.replace(
+            "from f5_tts.model.trainer import Trainer",
+            "try:\n    from f5_tts.model.trainer import Trainer\nexcept ImportError:\n    Trainer = None",
+        )
+        init_py.write_text(src)
+        logger.info("Patched f5_tts/model/__init__.py (optional Trainer import)")
 
-    Loads ai4bharat/IndicF5 lazily; synthesizes chunk-by-chunk so first-chunk
-    audio can be emitted before the full utterance finishes. On CUDA it runs
-    fp16; num_flow_steps trades quality vs latency (10-14 recommended).
+
+class IndicF5Engine:
+    """F5-TTS CFM-DiT acoustic backbone.
+
+    Lazy-loads on first synthesize call. Caches preprocessed reference audio
+    per voice profile to amortise the preprocessing cost across requests.
+
+    num_flow_steps trades quality vs latency:
+      8  steps → ~150-250ms/chunk on T4, slightly lower quality
+      12 steps → ~250-400ms/chunk on T4, good quality  (default)
+      20 steps → ~500-700ms/chunk on T4, best quality
     """
 
+    _MODEL_CFG = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
+    SAMPLE_RATE = 24000
+
     def __init__(self, config: dict):
-        cfg = config.get("stage_c", {})
-        self.model_id = cfg.get("model_id", "ai4bharat/IndicF5")
+        cfg = config.get("stage_c", {}).get("indicf5", {})
+        self.model_path = cfg.get("model_path", "base")
+        self.f5tts_dir = cfg.get("f5tts_dir")  # path to cloned F5-TTS repo; None if pip-installed
         self.device = cfg.get("device", "cuda")
-        self.dtype_str = cfg.get("dtype", "float16")
         self.num_flow_steps = int(cfg.get("num_flow_steps", 12))
         self.sway_coef = float(cfg.get("sway_sampling_coef", -1.0))
+        self.cfg_strength = float(cfg.get("cfg_strength", 2.0))
+        self.speed = float(cfg.get("speed", 1.0))
         self.default_voice = cfg.get("default_voice", "")
         self.voices = load_voice_profiles(cfg.get("voices_dir", "config/voices"))
-        self.sample_rate = int(config.get("server", {}).get("sample_rate", 24000))
+        self.sample_rate = self.SAMPLE_RATE
         self._model = None
+        self._vocoder = None
+        self._vocab_char_map = None
+        self._device: str = self.device
+        self._ref_cache: dict[str, tuple] = {}
+
+    # ── path / import helpers ────────────────────────────────────────────────
+
+    def _ensure_path(self) -> None:
+        if self.f5tts_dir:
+            src = str(Path(self.f5tts_dir) / "src")
+            if src not in sys.path:
+                sys.path.insert(0, src)
+            _patch_f5tts_init(Path(self.f5tts_dir))
+
+    def _vocab_path_for_base(self) -> str:
+        if self.f5tts_dir:
+            p = Path(self.f5tts_dir) / "src" / "f5_tts" / "infer" / "examples" / "vocab.txt"
+            if p.exists():
+                return str(p)
+        try:
+            import f5_tts
+            p = Path(f5_tts.__file__).parent / "infer" / "examples" / "vocab.txt"
+            if p.exists():
+                return str(p)
+        except ImportError:
+            pass
+        raise RuntimeError(
+            "Cannot locate F5-TTS vocab.txt. Set stage_c.indicf5.f5tts_dir in settings.yaml."
+        )
+
+    # ── model loading ────────────────────────────────────────────────────────
+
+    def _load(self) -> None:
+        import torch
+        self._ensure_path()
+
+        from f5_tts.model.backbones.dit import DiT
+        from f5_tts.model.cfm import CFM
+        from f5_tts.infer.utils_infer import get_tokenizer, load_checkpoint, load_vocoder
+
+        device = (
+            self.device
+            if self.device != "cuda" or torch.cuda.is_available()
+            else "cpu"
+        )
+        self._device = device
+
+        if self.model_path == "base":
+            # ai4bharat/IndicF5 — MIT licensed, Tamil-aware, commercially usable.
+            from huggingface_hub import hf_hub_download
+            ckpt_path = hf_hub_download(
+                "ai4bharat/IndicF5", "model.safetensors"
+            )
+            vocab_path = self._vocab_path_for_base()
+            use_ema = False  # IndicF5 safetensors are not EMA-wrapped
+        else:
+            bundle = Path(self.model_path)
+            if not bundle.is_dir():
+                raise RuntimeError(
+                    f"IndicF5 bundle not found: {bundle}. "
+                    "Run training/scripts/05_merge_export.py first."
+                )
+            ckpt_path = str(bundle / "model.pt")
+            vocab_path = str(bundle / "vocab.txt")
+            use_ema = False
+
+        vocab_char_map, vocab_size = get_tokenizer(vocab_path, "custom")
+
+        model = CFM(
+            transformer=DiT(**self._MODEL_CFG, text_num_embeds=vocab_size, mel_dim=100),
+            mel_spec_kwargs=dict(
+                n_fft=1024, hop_length=256, win_length=1024,
+                n_mel_channels=100, target_sample_rate=self.SAMPLE_RATE,
+                mel_spec_type="vocos",
+            ),
+            vocab_char_map=vocab_char_map,
+        )
+        load_checkpoint(model, ckpt_path, device=device, use_ema=use_ema)
+        model = model.to(device).eval()
+
+        vocoder = load_vocoder(vocoder_name="vocos", is_local=False, device=device)
+
+        self._model = model
+        self._vocoder = vocoder
+        self._vocab_char_map = vocab_char_map
+        logger.info(
+            "IndicF5Engine ready: model=%s device=%s flow_steps=%d",
+            self.model_path, device, self.num_flow_steps,
+        )
 
     @property
-    def model(self):
-        if self._model is None:
-            import torch
-            from transformers import AutoModel
+    def is_ready(self) -> bool:
+        return self._model is not None
 
-            dtype = torch.float16 if self.dtype_str == "float16" else torch.float32
-            device = (
-                self.device
-                if self.device != "cuda" or torch.cuda.is_available()
-                else "cpu"
-            )
-            logger.info(
-                "Loading %s on %s (%s, %d flow steps)",
-                self.model_id, device, self.dtype_str, self.num_flow_steps,
-            )
-            self._model = AutoModel.from_pretrained(
-                self.model_id, trust_remote_code=True, torch_dtype=dtype
-            ).to(device)
-            self._model.eval()
-            self._device = device
-        return self._model
+    def load(self) -> None:
+        if not self.is_ready:
+            self._load()
 
-    @property
-    def device_name(self) -> str:
-        _ = self.model
-        return getattr(self, "_device", "cpu")
+    # ── voice management ─────────────────────────────────────────────────────
 
     def get_voice(self, voice_name: str | None) -> VoiceProfile:
         name = voice_name or self.default_voice
@@ -91,9 +197,23 @@ class IndicF5Engine:
         if self.voices:
             return next(iter(self.voices.values()))
         raise RuntimeError(
-            "No voice profiles found. Add one under config/voices/<name>/voice.yaml "
-            "with a reference WAV + transcript."
+            "No voice profiles configured. "
+            "Add config/voices/<name>/voice.yaml with ref_audio and ref_text."
         )
+
+    def _get_ref_audio(self, voice: VoiceProfile) -> tuple:
+        """Preprocess + cache reference audio (amortised across all requests)."""
+        key = voice.ref_audio_path
+        if key not in self._ref_cache:
+            self._ensure_path()
+            from f5_tts.infer.utils_infer import preprocess_ref_audio_text
+            ref_audio, ref_text = preprocess_ref_audio_text(
+                voice.ref_audio_path, voice.ref_text
+            )
+            self._ref_cache[key] = (ref_audio, ref_text)
+        return self._ref_cache[key]
+
+    # ── synthesis ────────────────────────────────────────────────────────────
 
     def synthesize_chunk(
         self,
@@ -101,38 +221,61 @@ class IndicF5Engine:
         voice: VoiceProfile,
         flow_steps: int | None = None,
     ) -> np.ndarray:
-        model = self.model
+        self.load()
+        self._ensure_path()
+        from f5_tts.infer.utils_infer import infer_process
+
+        ref_audio, ref_text = self._get_ref_audio(voice)
         steps = flow_steps or self.num_flow_steps
-        payload = {
-            "text": text,
-            "ref_audio": voice.ref_audio_path,
-            "ref_text": voice.ref_text,
-        }
-        kwargs = {}
-        if hasattr(model, "infer") :
-            kwargs["num_steps"] = steps
-        audio = model(payload, **kwargs) if kwargs else model(payload)
+
+        # infer_process returns (audio_np, sample_rate, spectrogram)
+        audio, _, _ = infer_process(
+            ref_audio,
+            ref_text,
+            text,
+            self._model,
+            self._vocoder,
+            device=self._device,
+            nfe_step=steps,
+            sway_sampling_coef=self.sway_coef,
+            cfg_strength=self.cfg_strength,
+            speed=self.speed,
+        )
         return np.asarray(audio, dtype=np.float32)
+
+    def synthesize(self, text: str, voice_name: str | None = None) -> np.ndarray:
+        """Synthesize full text in one pass. Use synthesize_stream for low TTFA."""
+        voice = self.get_voice(voice_name)
+        return self.synthesize_chunk(text, voice)
 
     def synthesize_stream(
         self,
         text: str,
-        voice: VoiceProfile | None = None,
+        voice_name: str | None = None,
         min_syl: int = 8,
         max_syl: int = 14,
     ) -> Iterator[np.ndarray]:
-        voice = voice or self.get_voice(None)
-        chunks = chunk_text(text, min_syl=min_syl, max_syl=max_syl)
-        prev_tail = None
+        """Yield audio chunks as each prosodic chunk is synthesized.
+
+        First chunk is emitted after ~one synthesis pass (~250-400ms on T4),
+        so TTFA is roughly the cost of one chunk rather than the full utterance.
+        """
+        self.load()
+        voice = self.get_voice(voice_name)
+        chunks = chunk_text(text, min_syl=min_syl, max_syl=max_syl) or [text]
+
         fade_n = ms_to_samples(20, self.sample_rate)
+        prev_tail: np.ndarray | None = None
+
         for chunk in chunks:
             audio = self.synthesize_chunk(chunk, voice)
+            if audio is None or len(audio) == 0:
+                continue
             if prev_tail is not None:
                 n = min(fade_n, len(audio), len(prev_tail))
                 if n > 0:
-                    head = audio[:n]
-                    tail = prev_tail[-n:]
                     ramp = np.linspace(0.0, 1.0, n, dtype=np.float32)
-                    audio[:n] = head * ramp + tail * (1.0 - ramp)
+                    audio = audio.copy()
+                    audio[:n] = audio[:n] * ramp + prev_tail[-n:] * (1.0 - ramp)
             yield audio
             prev_tail = audio

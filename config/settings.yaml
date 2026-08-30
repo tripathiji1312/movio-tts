@@ -1,19 +1,18 @@
-# Solution 4 — VITS + FastSpeech2 Cascaded Stack
-# Pre-trained checkpoints, no training required for v1.
-# All paths relative to repo root unless absolute.
+# movio TTS — IndicF5 (F5-TTS CFM-DiT, 337M params, 24 kHz)
+# Stage A → text normalization → Stage B → Tanglish router → Stage C → IndicF5 acoustic
 
 server:
   host: "0.0.0.0"
   port: 8000
   ws_chunk_ms: 50          # streaming chunk size in milliseconds
-  sample_rate: 22050       # VITS native output rate
+  sample_rate: 24000       # IndicF5 native output rate
   opus_bitrate_kbps: 48
 
 stage_a:
   text_normalization:
     use_wfst: true              # indic-text-normalization (Pynini) if installed
     wfst_language: "ta"
-    nemo_fallback: true         # nemo_text_processing WFST fallback if installed
+    nemo_fallback: true         # nemo_text_processing fallback if installed
     domain_rules: true          # built-in OTP / phone / time / vehicle / currency rules
     gazetteer_path: "config/gazetteer/proper_nouns.txt"
 
@@ -29,34 +28,29 @@ stage_b:
     max_xlit_word_len: 24
 
 stage_c:
-  # Cascaded engine: VITS T1 (hot) → FastSpeech2 T2 (fallback)
-  enable_fallback: true
-  vits_timeout_ms: 5000
+  indicf5:
+    # "base" → downloads ai4bharat/IndicF5 weights from HF Hub (MIT, Tamil-aware)
+    # "/path/to/bundle" → fine-tuned bundle dir (model.pt + vocab.txt)
+    model_path: "base"
 
-  vits:
-    # samprabin/tamil_vits — MIT license, ~80M params
-    model_path: "models/vits/tamil_vits/model.pth"
-    config_path: "models/vits/tamil_vits/config.json"
-    onnx_path: "models/vits/tamil_vits/model.onnx"
-    use_onnx: true              # ONNX FP32: ~450ms/sentence on 4-core CPU
-    device: "cpu"               # cpu | cuda
-    speaker_id: null
-    length_scale: 0.95          # slightly faster = more natural pacing
-    noise_scale: 0.667          # controls expressiveness vs stability
-    noise_scale_w: 0.8          # duration predictor noise
-    sample_rate: 22050
+    # Path to cloned SWivid/F5-TTS repo; leave empty if installed via pip
+    f5tts_dir: ""
 
-  fastspeech2:
-    # smtiitm/FastSpeech2_HS — IIT Madras, MIT license, ~15M + 14M params
-    model_path: "models/fastspeech2/tamil_fs2/model.pth"
-    config_path: "models/fastspeech2/tamil_fs2/config.json"
-    vocoder_path: "models/fastspeech2/hifigan/model.pth"
-    vocoder_config_path: "models/fastspeech2/hifigan/config.json"
-    onnx_path: "models/fastspeech2/tamil_fs2/model.onnx"
-    vocoder_onnx_path: "models/fastspeech2/hifigan/vocoder.onnx"
-    use_onnx: false
-    device: "cpu"
-    sample_rate: 22050
+    device: "cuda"              # cuda | cpu
+
+    # Flow steps: quality vs latency trade-off
+    #   8  → ~150-250ms/chunk on T4 (lower quality)
+    #   12 → ~250-400ms/chunk on T4 (good quality)   ← default
+    #   20 → ~500-700ms/chunk on T4 (best quality)
+    num_flow_steps: 12
+
+    sway_sampling_coef: -1.0    # negative = sway sampling on (recommended)
+    cfg_strength: 2.0           # classifier-free guidance strength
+    speed: 1.0                  # 1.0 = natural pace; <1.0 = slower, >1.0 = faster
+
+    # Voice profiles directory — each subdir has voice.yaml (ref_audio + ref_text)
+    voices_dir: "config/voices"
+    default_voice: ""           # empty = use first available voice
 
 cache:
   backend: "memory"             # memory | redis (use redis in production)
@@ -69,4 +63,4 @@ pipeline:
   stage_timeout_ms:
     stage_a: 200
     stage_b: 150
-    stage_c: 5000
+    stage_c: 10000              # IndicF5 is slower than VITS; 10s covers long sentences

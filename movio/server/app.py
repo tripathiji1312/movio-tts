@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
     pipeline = None
 
 
-app = FastAPI(title="movio TTS — Solution 4 (VITS+FastSpeech2)", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="movio TTS — IndicF5 (F5-TTS CFM-DiT, 24 kHz)", version="0.3.0", lifespan=lifespan)
 
 STATIC_DIR = Path(__file__).parent / "static"
 if STATIC_DIR.exists():
@@ -66,7 +66,14 @@ async def voices():
 
 @app.get("/engine/stats")
 async def engine_stats():
-    return pipeline.engine.stats
+    engine = pipeline.engine
+    return {
+        "model_path": engine.model_path,
+        "device": engine._device,
+        "num_flow_steps": engine.num_flow_steps,
+        "is_ready": engine.is_ready,
+        "voices": list(engine.voices.keys()),
+    }
 
 
 @app.post("/tts")

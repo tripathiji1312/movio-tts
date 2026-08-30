@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from movio.acoustic.cascaded_engine import CascadedEngine
+from movio.acoustic.indicf5_engine import IndicF5Engine
 from movio.cache.audio_cache import AudioCache
 from movio.router.tanglish_router import TanglishRouter
 from movio.textnorm.normalizer import TextNormalizer
@@ -41,21 +41,21 @@ class SynthesisResult:
 
 
 class TTSPipeline:
-    """Orchestrator — Solution 4: VITS + FastSpeech2 cascaded stack.
+    """Stage A→B→C TTS pipeline.
 
-    A: context-aware normalization (WFST → NeMo → domain rules)
-    B: Tanglish router (LID + xlit + <cs> boundaries)
-    C: Cascaded synthesis — VITS (T1) → FastSpeech2+HiFi-GAN (T2 fallback)
+    A: context-aware text normalization (OTP, phone, booking ID, time, dates)
+    B: Tanglish router (LID + xlit + <cs> code-switch boundaries)
+    C: IndicF5 CFM-DiT acoustic model (F5-TTS stack, 24 kHz)
     """
 
     def __init__(self, config: dict):
         self.config = config
         self.normalizer = TextNormalizer(config)
         self.router = TanglishRouter(config)
-        self.engine = CascadedEngine(config)
+        self.engine = IndicF5Engine(config)
         self.cache = AudioCache(config)
+        self.sample_rate = self.engine.SAMPLE_RATE
         sr_cfg = config.get("server", {})
-        self.sample_rate = int(sr_cfg.get("sample_rate", 22050))
         self.ws_chunk_ms = int(sr_cfg.get("ws_chunk_ms", 50))
         timeouts = config.get("pipeline", {}).get("stage_timeout_ms", {})
         self.timeout_a = timeouts.get("stage_a", 200) / 1000
@@ -64,7 +64,7 @@ class TTSPipeline:
     async def warmup(self) -> None:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self.engine.load)
-        logger.info("Cascaded engine ready: %s", self.engine.stats)
+        logger.info("IndicF5Engine ready (model=%s)", self.engine.model_path)
 
     async def synthesize(self, request: SynthesisRequest) -> SynthesisResult:
         timings = StageTiming()
@@ -87,7 +87,8 @@ class TTSPipeline:
         )
         timings.stage_b_ms = (time.perf_counter() - t1) * 1000
 
-        cache_key = route.normalized_text
+        voice_name = request.voice or None
+        cache_key = f"{voice_name}:{route.normalized_text}"
         cached = await self.cache.get(cache_key, "default", 0)
         if cached:
             timings.cache_hit = True
@@ -95,9 +96,10 @@ class TTSPipeline:
         else:
             t2 = time.perf_counter()
             audio = await asyncio.get_running_loop().run_in_executor(
-                None, self.engine.synthesize, route.normalized_text,
+                None, self.engine.synthesize, route.normalized_text, voice_name,
             )
             timings.stage_c_first_chunk_ms = (time.perf_counter() - t2) * 1000
+            timings.engine_used = "indicf5"
             pcm = float_to_pcm16(audio)
             asyncio.create_task(self.cache.set(cache_key, "default", 0, pcm))
 
@@ -120,8 +122,10 @@ class TTSPipeline:
         route = self.router.route(norm.text)
         synth_text = route.normalized_text
 
+        voice_name = request.voice or None
+
         def produce():
-            for seg in self.engine.synthesize_stream(synth_text):
+            for seg in self.engine.synthesize_stream(synth_text, voice_name=voice_name):
                 yield seg
 
         async def producer():

@@ -61,13 +61,23 @@ def load_f5tts_model(model_dir: str, f5tts_src: Path, device: str):
     model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
 
     if model_dir == "base":
-        # safetensors pretrained checkpoint — load_checkpoint expects use_ema=True wrapping
-        ckpt_path = str(f5tts_src / "ckpts" / "movio_tanglish" / "pretrained_model_1250000.safetensors")
+        # Use ai4bharat/IndicF5 (MIT) as the baseline — same model we fine-tune from.
+        # IndicF5 safetensors are not wrapped in EMA so use_ema=False.
+        indicf5_base_dir = f5tts_src.parent / "indicf5_base"
+        ckpt_path = str(indicf5_base_dir / "model.safetensors")
         vocab_path = str(f5tts_src / "src" / "f5_tts" / "infer" / "examples" / "vocab.txt")
-        use_ema = True
+        # Prefer IndicF5's own vocab.txt if it was downloaded
+        indicf5_vocab = indicf5_base_dir / "vocab.txt"
+        if indicf5_vocab.exists():
+            vocab_path = str(indicf5_vocab)
+        use_ema = False
         if not Path(ckpt_path).exists():
             from huggingface_hub import hf_hub_download
-            ckpt_path = hf_hub_download("SWivid/F5-TTS", "F5TTS_v1_Base/model_1250000.safetensors")
+            Path(ckpt_path).parent.mkdir(parents=True, exist_ok=True)
+            ckpt_path = hf_hub_download(
+                "ai4bharat/IndicF5", "model.safetensors",
+                local_dir=str(indicf5_base_dir),
+            )
     else:
         model_path = Path(model_dir)
         ckpt_path = str(model_path / "model.pt")
