@@ -125,6 +125,29 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
         print(f"Converted: {len(raw)} keys → {len(converted)} keys → {converted_file}")
     indicf5_model_file = str(converted_file)
 
+    # Free the original (1.4 GB) now that we have the converted copy.
+    orig_safetensors = indicf5_ckpt_dir / "model.safetensors"
+    if orig_safetensors.exists():
+        orig_safetensors.unlink()
+        print(f"Freed {orig_safetensors.name} (~1.4 GB) — replaced by converted copy")
+
+    # Pre-place the converted file at the exact path finetune_cli.py would copy it to.
+    # finetune_cli computes: workdir/ckpts/{dataset_name}/pretrained_{basename(pretrain)}.
+    # If that file already exists, it skips shutil.copy2, saving ~1.3 GB of I/O.
+    ckpts_dir = workdir / "ckpts" / dataset_name
+    ckpts_dir.mkdir(parents=True, exist_ok=True)
+    pretrained_dest = ckpts_dir / f"pretrained_{converted_file.name}"
+    if not pretrained_dest.exists():
+        try:
+            os.link(str(converted_file), str(pretrained_dest))
+            print(f"Hard-linked converted model → {pretrained_dest} (zero extra disk)")
+        except OSError:
+            pretrained_dest.symlink_to(converted_file.resolve())
+            print(f"Symlinked converted model → {pretrained_dest}")
+
+    free_gb = _shutil.disk_usage("/kaggle/working").free / (1024**3)
+    print(f"Disk free after weight prep: {free_gb:.1f} GB")
+
     # IndicF5 ships its own vocab — use it as the base vocab so Tamil chars are
     # already present without needing to resize embeddings.
     indicf5_vocab_candidates = [
@@ -253,8 +276,10 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
             print(f"Freed disk: removed {cleanup_dir}")
     free_gb = _shutil.disk_usage("/kaggle/working").free / (1024**3)
     print(f"Disk free before training: {free_gb:.1f} GB")
-    if free_gb < 12:
-        print(f"WARNING: only {free_gb:.1f} GB free — checkpoints are ~5 GB each, training may fail")
+    if free_gb < 3:
+        raise SystemExit(f"Only {free_gb:.1f} GB free — need ≥3 GB for training checkpoints. Abort.")
+    elif free_gb < 5:
+        print(f"WARNING: only {free_gb:.1f} GB free — checkpoints are ~1.5 GB each, may be tight")
 
     # Run finetune CLI starting from ai4bharat/IndicF5 weights (MIT).
     # --pretrain overrides the default SWivid pretrained download so
