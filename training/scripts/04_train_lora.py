@@ -203,9 +203,15 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
         from safetensors.torch import load_file as _st_load, save_file as _st_save
         import torch as _torch
         sd = _st_load(str(converted_file))
-        embed_key = next((k for k in sd if "text_embed" in k and "weight" in k), None)
+        # Target specifically the nn.Embedding weight (2D), not conv weights (3D) that
+        # also live under the text_embed module. The Embedding key ends with
+        # ".text_embed.weight" while conv weights end with ".convs.N.weight".
+        embed_key = next(
+            (k for k in sd if k.endswith(".text_embed.weight") and len(sd[k].shape) == 2),
+            None,
+        )
         if embed_key is None:
-            print(f"WARNING: no text_embed weight key found in {converted_file.name} — resize skipped")
+            print(f"WARNING: no text_embed.weight (2D) found in {converted_file.name} — resize skipped")
         if embed_key:
             old_emb = sd[embed_key]
             old_n, dim = old_emb.shape
