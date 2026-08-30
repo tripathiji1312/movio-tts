@@ -26,12 +26,18 @@ async def lifespan(app: FastAPI):
     try:
         await pipeline.warmup()
     except Exception as exc:
-        logger.warning("Model warmup deferred: %s", exc)
+        logger.warning("Pipeline warmup deferred: %s", exc)
     yield
+    if pipeline is not None:
+        await pipeline.shutdown()
     pipeline = None
 
 
-app = FastAPI(title="movio TTS — IndicF5 (F5-TTS CFM-DiT, 24 kHz)", version="0.3.0", lifespan=lifespan)
+app = FastAPI(
+    title="movio TTS — Hybrid CPU (disk cache + MMS-TTS, 16 kHz)",
+    version="0.4.0",
+    lifespan=lifespan,
+)
 
 STATIC_DIR = Path(__file__).parent / "static"
 if STATIC_DIR.exists():
@@ -41,7 +47,6 @@ if STATIC_DIR.exists():
 @app.get("/")
 async def root():
     from fastapi.responses import FileResponse
-
     index = STATIC_DIR / "index.html"
     if index.exists():
         return FileResponse(str(index))
@@ -67,13 +72,14 @@ async def voices():
 @app.get("/engine/stats")
 async def engine_stats():
     engine = pipeline.engine
-    return {
+    stats = {
+        "engine": "hybrid",
         "model_path": engine.model_path,
-        "device": engine._device,
-        "num_flow_steps": engine.num_flow_steps,
+        "sample_rate": engine.SAMPLE_RATE,
         "is_ready": engine.is_ready,
-        "voices": list(engine.voices.keys()),
     }
+    stats.update(engine.cache_stats())
+    return stats
 
 
 @app.post("/tts")
@@ -107,7 +113,6 @@ async def tts_wav(req: TTSRequest):
         SynthesisRequest(text=req.text, voice=req.voice, language_hint=req.language_hint)
     )
     from fastapi.responses import Response
-
     return Response(
         content=wav_bytes(result.audio, result.sample_rate),
         media_type="audio/wav",
@@ -136,19 +141,17 @@ async def tts_stream(ws: WebSocket):
             await ws.send_json({"type": "end"})
     except WebSocketDisconnect:
         logger.info("client disconnected")
-    except Exception as exc:
+    except Exception:
         logger.exception("stream error")
         try:
-            await ws.send_json({"type": "error", "message": str(exc)})
+            await ws.send_json({"type": "error", "message": "synthesis failed"})
         except Exception:
             pass
 
 
 def main():
     import uvicorn
-
     from movio.textnorm.normalizer import load_settings
-
     settings = load_settings()
     srv = settings.get("server", {})
     uvicorn.run(
