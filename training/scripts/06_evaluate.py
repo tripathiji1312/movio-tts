@@ -49,18 +49,23 @@ def _patch_f5tts_init(f5tts_src: Path):
 
 
 def _resize_text_embed(sd: dict, model) -> dict:
-    """Pad text_embed.weight in checkpoint to match model's vocab size (mean-init new rows)."""
+    """Resize text_embed.weight in checkpoint to match model's vocab size."""
     import torch as _torch
     model_sd = model.state_dict()
     for key in list(sd.keys()):
         if "text_embed" in key and key.endswith(".weight") and key in model_sd:
             ckpt_w, model_w = sd[key], model_sd[key]
-            if ckpt_w.shape != model_w.shape and ckpt_w.shape[1] == model_w.shape[1]:
-                new_w = model_w.clone()
-                new_w[: ckpt_w.shape[0]] = ckpt_w
-                new_w[ckpt_w.shape[0] :] = ckpt_w.mean(dim=0, keepdim=True)
-                sd[key] = new_w
-                print(f"Resized {key}: {list(ckpt_w.shape)} → {list(model_w.shape)}")
+            if ckpt_w.shape == model_w.shape:
+                continue
+            if ckpt_w.shape[1] != model_w.shape[1]:
+                continue  # dim mismatch — leave for load_state_dict to error on
+            new_w = _torch.zeros(model_w.shape, dtype=ckpt_w.dtype)
+            n = min(ckpt_w.shape[0], model_w.shape[0])
+            new_w[:n] = ckpt_w[:n]
+            if model_w.shape[0] > ckpt_w.shape[0]:
+                new_w[n:] = ckpt_w.mean(dim=0, keepdim=True)
+            sd[key] = new_w
+            print(f"Resized {key}: {list(ckpt_w.shape)} → {list(model_w.shape)}")
     return sd
 
 

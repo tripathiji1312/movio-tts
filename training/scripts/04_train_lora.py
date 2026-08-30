@@ -364,9 +364,25 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
         "--last_per_updates", "2000",
         "--keep_last_n_checkpoints", "1",
         "--finetune",
+        "--num_workers", "4",
     ]
+    # Validate that every character in every utterance maps to a valid vocab index.
+    # list_str_to_idx uses vocab_char_map.get(c, 0) — unknowns silently become 0 (space).
+    # After +1 shift in TextEmbedding, max index = vocab_size = len(vocab).
+    # Embedding table size = vocab_size + 1, so valid lookup range is [0, vocab_size].
+    with open(vocab_path, "r", encoding="utf-8") as _vf:
+        _vocab_char_map = {line.rstrip("\n"): i for i, line in enumerate(_vf)}
+    _vocab_size = len(_vocab_char_map)
+    _max_idx = max((_vocab_char_map.get(c, 0) for t in texts for c in t), default=0)
+    _missing = set(c for t in texts for c in t if c not in _vocab_char_map)
+    print(f"Vocab validation: size={_vocab_size}, max_token_idx={_max_idx} (embed table={_vocab_size+1} rows)")
+    if _missing:
+        print(f"WARNING: {len(_missing)} chars not in vocab (will map to idx 0/space): {sorted(_missing)[:20]}")
+    assert _max_idx < _vocab_size, f"Token index {_max_idx} >= vocab_size {_vocab_size} — OOB!"
+
+    env = {**os.environ, "CUDA_LAUNCH_BLOCKING": "1"}
     print("Running:", " ".join(cmd))
-    subprocess.run(cmd, check=True, cwd=str(workdir))
+    subprocess.run(cmd, check=True, cwd=str(workdir), env=env)
 
     # Keep only the final checkpoint (model_last.pt) to save disk for export.
     # F5-TTS finetune_cli saves under ckpts/{exp_name}/, not ckpts/{dataset_name}/.
