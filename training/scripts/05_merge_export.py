@@ -49,8 +49,23 @@ def main():
     import torch
 
     print(f"Loading checkpoint: {ckpt_path} ({ckpt_path.stat().st_size / 1e9:.2f} GB)")
-    # weights_only=False needed because optimizer state contains non-tensor objects
-    checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+
+    if ckpt_path.suffix == ".safetensors":
+        from safetensors.torch import load_file as _st_load
+        flat_sd = _st_load(str(ckpt_path))
+        # IndicF5 safetensors: keys are "ema_model._orig_mod.transformer.…" + vocoder
+        # Strip _orig_mod prefix, drop vocoder, strip ema_model prefix.
+        checkpoint = {}
+        for k, v in flat_sd.items():
+            if k.startswith("vocoder."):
+                continue
+            new_k = k.replace("ema_model._orig_mod.", "ema_model.")
+            checkpoint[new_k] = v
+        # Wrap into the same format as a .pt checkpoint
+        checkpoint = {"ema_model_state_dict": checkpoint}
+        print(f"Loaded safetensors: {len(flat_sd)} keys → {len(checkpoint['ema_model_state_dict'])} (stripped vocoder + _orig_mod)")
+    else:
+        checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=False)
 
     if "ema_model_state_dict" in checkpoint:
         raw_sd = checkpoint["ema_model_state_dict"]
@@ -59,7 +74,7 @@ def main():
         raw_sd = checkpoint["model_state_dict"]
         print("Using model weights (no EMA found)")
     else:
-        raise SystemExit(f"Unrecognized checkpoint format. Keys: {list(checkpoint.keys())}")
+        raise SystemExit(f"Unrecognized checkpoint format. Keys: {list(checkpoint.keys())[:20]}")
 
     # Strip the "ema_model." prefix — this is how F5-TTS inference expects the keys
     skip_keys = {"initted", "step", "update",

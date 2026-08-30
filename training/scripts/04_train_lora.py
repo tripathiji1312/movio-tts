@@ -131,6 +131,13 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
         orig_safetensors.unlink()
         print(f"Freed {orig_safetensors.name} (~1.4 GB) — replaced by converted copy")
 
+    # Clean HF download cache immediately — may contain another 1.4 GB copy
+    for _cache in [Path("/root/.cache/huggingface/hub"),
+                   Path.home() / ".cache" / "huggingface" / "hub"]:
+        if _cache.exists():
+            _shutil.rmtree(_cache, ignore_errors=True)
+            print(f"Freed HF cache: {_cache}")
+
     # Pre-place the converted file at the exact path finetune_cli.py would copy it to.
     # finetune_cli computes: workdir/ckpts/{dataset_name}/pretrained_{basename(pretrain)}.
     # If that file already exists, it skips shutil.copy2, saving ~1.3 GB of I/O.
@@ -264,12 +271,14 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
         init_py.write_text(init_src)
         print("Patched model/__init__.py for optional Trainer import")
 
-    # Aggressively free disk before training
+    # Aggressively free disk before training — audio WAVs are still needed by the
+    # Arrow dataset (audio_path references), so we cannot delete data/audio/.
     import shutil as _shutil
     for cleanup_dir in [
         Path("/kaggle/working/raw"),
         Path("/root/.cache/huggingface/hub"),
         Path("/root/.cache/pip"),
+        Path.home() / ".cache" / "huggingface" / "hub",
     ]:
         if cleanup_dir.exists():
             _shutil.rmtree(cleanup_dir, ignore_errors=True)

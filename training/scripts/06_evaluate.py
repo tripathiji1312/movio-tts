@@ -62,22 +62,38 @@ def load_f5tts_model(model_dir: str, f5tts_src: Path, device: str):
 
     if model_dir == "base":
         # Use ai4bharat/IndicF5 (MIT) as the baseline — same model we fine-tune from.
-        # IndicF5 safetensors are not wrapped in EMA so use_ema=False.
+        # IndicF5 safetensors has _orig_mod prefix + vocoder keys that must be stripped.
         indicf5_base_dir = f5tts_src.parent / "indicf5_base"
-        ckpt_path = str(indicf5_base_dir / "model.safetensors")
+        converted_path = indicf5_base_dir / "model_converted.safetensors"
+        raw_path = indicf5_base_dir / "model.safetensors"
         vocab_path = str(f5tts_src / "src" / "f5_tts" / "infer" / "examples" / "vocab.txt")
-        # Prefer IndicF5's own vocab.txt if it was downloaded
         indicf5_vocab = indicf5_base_dir / "vocab.txt"
         if indicf5_vocab.exists():
             vocab_path = str(indicf5_vocab)
-        use_ema = False
-        if not Path(ckpt_path).exists():
-            from huggingface_hub import hf_hub_download
-            Path(ckpt_path).parent.mkdir(parents=True, exist_ok=True)
-            ckpt_path = hf_hub_download(
-                "ai4bharat/IndicF5", "model.safetensors",
-                local_dir=str(indicf5_base_dir),
-            )
+        use_ema = True  # converted keys still have "ema_model." prefix
+
+        if converted_path.exists():
+            ckpt_path = str(converted_path)
+        else:
+            if not raw_path.exists():
+                from huggingface_hub import hf_hub_download
+                indicf5_base_dir.mkdir(parents=True, exist_ok=True)
+                hf_hub_download(
+                    "ai4bharat/IndicF5", "model.safetensors",
+                    local_dir=str(indicf5_base_dir),
+                )
+            # Convert: strip _orig_mod prefix + vocoder keys
+            print("Converting IndicF5 base weights for evaluation...")
+            from safetensors.torch import load_file as _st_load, save_file as _st_save
+            raw = _st_load(str(raw_path))
+            converted = {}
+            for k, v in raw.items():
+                if k.startswith("vocoder."):
+                    continue
+                converted[k.replace("ema_model._orig_mod.", "ema_model.")] = v
+            _st_save(converted, str(converted_path))
+            print(f"Converted: {len(raw)} → {len(converted)} keys → {converted_path}")
+            ckpt_path = str(converted_path)
     else:
         model_path = Path(model_dir)
         ckpt_path = str(model_path / "model.pt")
@@ -104,7 +120,20 @@ def load_f5tts_model(model_dir: str, f5tts_src: Path, device: str):
         vocab_char_map=vocab_char_map,
     )
 
-    load_checkpoint(model, ckpt_path, device=device, use_ema=use_ema)
+    if ckpt_path.endswith(".safetensors"):
+        # load_checkpoint uses torch.load which can't read safetensors — load manually
+        from safetensors.torch import load_file as _st_load
+        sd = _st_load(ckpt_path)
+        # Strip "ema_model." prefix (load_checkpoint with use_ema=True does this via EMA wrapper)
+        sd = {k.replace("ema_model.", "", 1) if k.startswith("ema_model.") else k: v
+              for k, v in sd.items()}
+        missing, unexpected = model.load_state_dict(sd, strict=False)
+        if missing:
+            print(f"WARNING: {len(missing)} missing keys (first 5: {missing[:5]})")
+        if unexpected:
+            print(f"WARNING: {len(unexpected)} unexpected keys (first 5: {unexpected[:5]})")
+    else:
+        load_checkpoint(model, ckpt_path, device=device, use_ema=use_ema)
     model = model.to(device).eval()
     vocoder = load_vocoder(vocoder_name="vocos", is_local=False, device=device)
     return model, vocoder, vocab_char_map
