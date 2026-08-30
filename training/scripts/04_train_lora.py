@@ -78,7 +78,7 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
             audio_path = row["audio"]
             if Path(audio_path).exists():
                 durations.append(float(row["duration_s"]))
-                texts.append(row["text"])
+                texts.append(row["text"].replace("\n", " ").replace("\r", " ").strip())
                 audio_paths.append(audio_path)
 
     print(f"Building Arrow dataset: {len(texts)} utterances, "
@@ -176,9 +176,17 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
     pretrained_vocab_path = indicf5_vocab_file
     with open(pretrained_vocab_path, "r", encoding="utf-8") as f:
         pretrained_vocab = [line.rstrip("\n") for line in f]
-    # First char should be space (idx 0)
-    if pretrained_vocab and pretrained_vocab[0] != " ":
-        pretrained_vocab = [" "] + pretrained_vocab
+    # Ensure space is at index 0 (F5-TTS asserts vocab_char_map[" "] == 0).
+    # Deduplicate while preserving order so indices stay stable.
+    seen = set()
+    deduped = []
+    for ch in pretrained_vocab:
+        if ch not in seen:
+            seen.add(ch)
+            deduped.append(ch)
+    pretrained_vocab = deduped
+    if not pretrained_vocab or pretrained_vocab[0] != " ":
+        pretrained_vocab = [" "] + [ch for ch in pretrained_vocab if ch != " "]
 
     existing_chars = set(pretrained_vocab)
     new_chars = set()
@@ -375,10 +383,12 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
     _vocab_size = len(_vocab_char_map)
     _max_idx = max((_vocab_char_map.get(c, 0) for t in texts for c in t), default=0)
     _missing = set(c for t in texts for c in t if c not in _vocab_char_map)
+    # After TextEmbedding's +1 shift, valid lookup range is [0, vocab_size] (table has vocab_size+1 rows).
+    # Vocab indices are 0-based so the max valid index is vocab_size-1; unknowns use 0.
     print(f"Vocab validation: size={_vocab_size}, max_token_idx={_max_idx} (embed table={_vocab_size+1} rows)")
     if _missing:
         print(f"WARNING: {len(_missing)} chars not in vocab (will map to idx 0/space): {sorted(_missing)[:20]}")
-    assert _max_idx < _vocab_size, f"Token index {_max_idx} >= vocab_size {_vocab_size} — OOB!"
+    assert _max_idx <= _vocab_size - 1, f"Token index {_max_idx} >= vocab_size {_vocab_size} — OOB!"
 
     env = {**os.environ, "CUDA_LAUNCH_BLOCKING": "1"}
     print("Running:", " ".join(cmd))
