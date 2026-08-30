@@ -351,9 +351,13 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
         "--tokenizer", tokenizer,
         "--pretrain", str(indicf5_model_file),   # ← IndicF5 base (MIT, not SWivid CC BY-NC)
         "--epochs", str(epochs),
-        "--batch_size_per_gpu", str(batch_size * 24000 * 10),  # frames: batch * sr * ~10s
+        # batch_size_per_gpu is a mel-frame budget (hop_length=256, sr=24000 → 93.75 fps).
+        # batch_size arg here controls utterances-per-batch; 8s average × fps × utts.
+        "--batch_size_per_gpu", str(int(batch_size * 8 * 24000 / 256)),
         "--batch_size_type", "frame",
-        "--max_samples", str(batch_size),
+        # max_samples caps sequences per batch (not a length filter). Default 64 is fine;
+        # match to batch_size so one batch = exactly batch_size utterances.
+        "--max_samples", str(max(batch_size, 8)),
         "--learning_rate", "5e-6",
         "--num_warmup_updates", "200",
         "--save_per_updates", "50000",
@@ -364,22 +368,42 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, check=True, cwd=str(workdir))
 
-    # Keep only the final checkpoint (model_last.pt) to save disk for export
-    ckpt_dir = workdir / "ckpts" / dataset_name
-    if ckpt_dir.exists():
-        import shutil
-        last_pt = ckpt_dir / "model_last.pt"
-        if last_pt.exists():
-            shutil.copy2(last_pt, out_dir / last_pt.name)
-            print(f"Copied checkpoint: {last_pt.name}")
-        # Remove all intermediate checkpoints to free disk for merge/export
-        for pt in list(ckpt_dir.glob("model_*.pt")):
-            if pt.name != "model_last.pt":
-                pt.unlink(missing_ok=True)
-                print(f"Removed intermediate: {pt.name}")
-        for safetensors in list(ckpt_dir.glob("pretrained_*.safetensors")):
-            safetensors.unlink(missing_ok=True)
-            print(f"Removed pretrained safetensors: {safetensors.name}")
+    # Keep only the final checkpoint (model_last.pt) to save disk for export.
+    # F5-TTS finetune_cli saves under ckpts/{exp_name}/, not ckpts/{dataset_name}/.
+    exp_name = "F5TTS_v1_Base"
+    ckpt_dir = workdir / "ckpts" / exp_name
+    if not ckpt_dir.exists():
+        # Fallback: older F5-TTS versions key by dataset_name
+        ckpt_dir_fallback = workdir / "ckpts" / dataset_name
+        if ckpt_dir_fallback.exists():
+            ckpt_dir = ckpt_dir_fallback
+        else:
+            raise SystemExit(
+                f"No checkpoint directory found after training.\n"
+                f"Checked: {workdir / 'ckpts' / exp_name}\n"
+                f"     and: {workdir / 'ckpts' / dataset_name}"
+            )
+    import shutil
+    last_pt = ckpt_dir / "model_last.pt"
+    if not last_pt.exists():
+        # model_last.pt is only written every last_per_updates steps; if training ended
+        # before the first save, fall back to the most recent numbered checkpoint.
+        candidates = sorted(ckpt_dir.glob("model_*.pt"))
+        if candidates:
+            last_pt = candidates[-1]
+            print(f"model_last.pt not found; using most recent: {last_pt.name}")
+        else:
+            raise SystemExit(f"No checkpoint .pt files found in {ckpt_dir} after training.")
+    shutil.copy2(last_pt, out_dir / "model_last.pt")
+    print(f"Copied checkpoint: {last_pt.name}")
+    # Remove intermediates to free disk for merge/export
+    for pt in list(ckpt_dir.glob("model_*.pt")):
+        if pt != last_pt:
+            pt.unlink(missing_ok=True)
+            print(f"Removed intermediate: {pt.name}")
+    for safetensors in list(ckpt_dir.glob("pretrained_*.safetensors")):
+        safetensors.unlink(missing_ok=True)
+        print(f"Removed pretrained safetensors: {safetensors.name}")
     free_gb = _shutil.disk_usage("/kaggle/working").free / (1024**3)
     print(f"Disk free after training: {free_gb:.1f} GB")
     print(f"Checkpoints in: {out_dir}")
