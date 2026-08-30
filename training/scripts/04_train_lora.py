@@ -151,20 +151,6 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
             _shutil.rmtree(_cache, ignore_errors=True)
             print(f"Freed HF cache: {_cache}")
 
-    # Pre-place the converted file at the exact path finetune_cli.py would copy it to.
-    # finetune_cli computes: workdir/ckpts/{dataset_name}/pretrained_{basename(pretrain)}.
-    # If that file already exists, it skips shutil.copy2, saving ~1.3 GB of I/O.
-    ckpts_dir = workdir / "ckpts" / dataset_name
-    ckpts_dir.mkdir(parents=True, exist_ok=True)
-    pretrained_dest = ckpts_dir / f"pretrained_{converted_file.name}"
-    if not pretrained_dest.exists():
-        try:
-            os.link(str(converted_file), str(pretrained_dest))
-            print(f"Hard-linked converted model → {pretrained_dest} (zero extra disk)")
-        except OSError:
-            pretrained_dest.symlink_to(converted_file.resolve())
-            print(f"Symlinked converted model → {pretrained_dest}")
-
     free_gb = _shutil.disk_usage("/kaggle/working").free / (1024**3)
     print(f"Disk free after weight prep: {free_gb:.1f} GB")
 
@@ -207,6 +193,51 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
         for ch in vocab:
             f.write(ch + "\n")
     print(f"Vocab: {len(vocab)} characters ({len(new_chars)} new Tamil/Tanglish chars added) -> {vocab_path}")
+
+    # Pre-resize the text embedding in the converted safetensors to match the final
+    # vocab size. The --pretrain loading path in finetune_cli.py loads directly from
+    # safetensors before model instantiation, so the trainer patch (which only covers
+    # the checkpoint-resume path) does not help here. Writing the right shape up front
+    # avoids the CUDA gather OOB when the first batch containing new Tamil chars is hit.
+    if new_chars:
+        from safetensors.torch import load_file as _st_load, save_file as _st_save
+        import torch as _torch
+        sd = _st_load(str(converted_file))
+        embed_key = next((k for k in sd if "text_embed" in k and "weight" in k), None)
+        if embed_key is None:
+            print(f"WARNING: no text_embed weight key found in {converted_file.name} — resize skipped")
+        if embed_key:
+            old_emb = sd[embed_key]
+            old_n, dim = old_emb.shape
+            # DiT's TextEmbedding uses nn.Embedding(text_num_embeds + 1, ...) — the +1
+            # is a null/padding slot. get_tokenizer returns len(vocab_txt_lines) as
+            # vocab_size, and DiT adds +1, so the actual embedding rows = len(vocab)+1.
+            new_n = len(vocab) + 1
+            if old_n < new_n:
+                new_emb = _torch.zeros(new_n, dim, dtype=old_emb.dtype)
+                new_emb[:old_n] = old_emb
+                new_emb[old_n:] = old_emb.mean(dim=0, keepdim=True)
+                sd[embed_key] = new_emb
+                _st_save(sd, str(converted_file))
+                print(f"Resized text_embed in converted checkpoint: [{old_n}, {dim}] → [{new_n}, {dim}]")
+
+    # Pre-place the converted file at the exact path finetune_cli.py would copy it to.
+    # finetune_cli computes: workdir/ckpts/{dataset_name}/pretrained_{basename(pretrain)}.
+    # If that file already exists, it skips shutil.copy2, saving ~1.3 GB of I/O.
+    # Must be done AFTER any resize above so the link points to the final file content.
+    ckpts_dir = workdir / "ckpts" / dataset_name
+    ckpts_dir.mkdir(parents=True, exist_ok=True)
+    pretrained_dest = ckpts_dir / f"pretrained_{converted_file.name}"
+    # Remove stale link/file if the embedding was resized (inode unchanged for hard-link,
+    # but we unconditionally recreate so the dest always reflects the current source).
+    if pretrained_dest.exists() or pretrained_dest.is_symlink():
+        pretrained_dest.unlink()
+    try:
+        os.link(str(converted_file), str(pretrained_dest))
+        print(f"Hard-linked converted model → {pretrained_dest} (zero extra disk)")
+    except OSError:
+        pretrained_dest.symlink_to(converted_file.resolve())
+        print(f"Symlinked converted model → {pretrained_dest}")
 
     # Write duration.json
     with open(ds_dir / "duration.json", "w") as f:
