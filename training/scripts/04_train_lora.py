@@ -105,6 +105,26 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
         snapshot_download("ai4bharat/IndicF5", local_dir=str(indicf5_ckpt_dir))
         indicf5_model_file = str(indicf5_ckpt_dir / "model.safetensors")
 
+    # IndicF5 was saved with torch.compile() — keys have "._orig_mod." prefix
+    # and the vocoder is bundled in the same file. Strip both so F5-TTS trainer
+    # can load it with load_checkpoint().
+    converted_file = indicf5_ckpt_dir / "model_converted.safetensors"
+    if not converted_file.exists():
+        print("Converting IndicF5 weights (strip _orig_mod prefix + vocoder keys)...")
+        from safetensors.torch import load_file as _st_load, save_file as _st_save
+        raw = _st_load(indicf5_model_file)
+        converted = {}
+        for k, v in raw.items():
+            # Skip vocoder weights entirely (not needed for the DiT backbone)
+            if k.startswith("vocoder."):
+                continue
+            # Strip torch.compile prefix from EMA model keys
+            new_k = k.replace("ema_model._orig_mod.", "ema_model.")
+            converted[new_k] = v
+        _st_save(converted, str(converted_file))
+        print(f"Converted: {len(raw)} keys → {len(converted)} keys → {converted_file}")
+    indicf5_model_file = str(converted_file)
+
     # IndicF5 ships its own vocab — use it as the base vocab so Tamil chars are
     # already present without needing to resize embeddings.
     indicf5_vocab_candidates = [
