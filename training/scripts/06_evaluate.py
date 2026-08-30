@@ -35,13 +35,27 @@ import numpy as np
 import torch
 
 
+def _patch_f5tts_init(f5tts_src: Path):
+    """Make Trainer import optional in __init__.py to avoid dataset→hub crash."""
+    init_py = f5tts_src / "src" / "f5_tts" / "model" / "__init__.py"
+    if init_py.exists():
+        src = init_py.read_text()
+        if "try:" not in src and "from f5_tts.model.trainer import Trainer" in src:
+            src = src.replace(
+                "from f5_tts.model.trainer import Trainer",
+                "try:\n    from f5_tts.model.trainer import Trainer\nexcept ImportError:\n    Trainer = None",
+            )
+            init_py.write_text(src)
+
+
 def load_f5tts_model(model_dir: str, f5tts_src: Path, device: str):
     """Load a fine-tuned or base F5-TTS model using the F5-TTS inference stack."""
     f5tts_src_str = str(f5tts_src / "src")
     if f5tts_src_str not in sys.path:
         sys.path.insert(0, f5tts_src_str)
 
-    from f5_tts.model.backbones.dit import DiT  # bypass __init__ to avoid Trainer→dataset→hub chain
+    _patch_f5tts_init(f5tts_src)
+    from f5_tts.model.backbones.dit import DiT
     from f5_tts.infer.utils_infer import load_vocoder, load_checkpoint
 
     model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)

@@ -169,6 +169,18 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
         trainer_py.write_text(trainer_src)
         print("Patched trainer.py for text embedding resize")
 
+    # Patch __init__.py to make Trainer import optional — it triggers
+    # dataset.py → datasets 5.0.0 → huggingface_hub version mismatch on Kaggle
+    init_py = workdir / "src" / "f5_tts" / "model" / "__init__.py"
+    init_src = init_py.read_text()
+    if "try:" not in init_src and "from f5_tts.model.trainer import Trainer" in init_src:
+        init_src = init_src.replace(
+            "from f5_tts.model.trainer import Trainer",
+            "try:\n    from f5_tts.model.trainer import Trainer\nexcept ImportError:\n    Trainer = None",
+        )
+        init_py.write_text(init_src)
+        print("Patched model/__init__.py for optional Trainer import")
+
     # Aggressively free disk before training
     import shutil as _shutil
     for cleanup_dir in [
@@ -195,7 +207,7 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
         "--batch_size_per_gpu", str(batch_size * 24000 * 10),  # frames: batch * sr * ~10s
         "--batch_size_type", "frame",
         "--max_samples", str(batch_size),
-        "--learning_rate", "7e-6",
+        "--learning_rate", "5e-6",
         "--num_warmup_updates", "200",
         "--save_per_updates", "50000",
         "--last_per_updates", "2000",
