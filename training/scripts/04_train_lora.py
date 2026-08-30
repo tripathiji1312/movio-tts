@@ -372,7 +372,6 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
         "--last_per_updates", "2000",
         "--keep_last_n_checkpoints", "1",
         "--finetune",
-        "--num_workers", "4",
     ]
     # Validate that every character in every utterance maps to a valid vocab index.
     # list_str_to_idx uses vocab_char_map.get(c, 0) — unknowns silently become 0 (space).
