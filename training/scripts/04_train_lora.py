@@ -109,7 +109,15 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
     # and the vocoder is bundled in the same file. Strip both so F5-TTS trainer
     # can load it with load_checkpoint().
     converted_file = indicf5_ckpt_dir / "model_converted.safetensors"
-    if not converted_file.exists():
+    _needs_conversion = not converted_file.exists()
+    if not _needs_conversion:
+        # Re-convert if the file is missing the EMA metadata buffers added in a later fix
+        from safetensors.torch import load_file as _st_check
+        _keys = set(_st_check(str(converted_file)).keys())
+        if "initted" not in _keys or "step" not in _keys:
+            print("Re-converting: existing file missing EMA metadata buffers (initted/step)")
+            _needs_conversion = True
+    if _needs_conversion:
         print("Converting IndicF5 weights (strip _orig_mod prefix + vocoder keys)...")
         from safetensors.torch import load_file as _st_load, save_file as _st_save
         raw = _st_load(indicf5_model_file)
@@ -121,6 +129,11 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
             # Strip torch.compile prefix from EMA model keys
             new_k = k.replace("ema_model._orig_mod.", "ema_model.")
             converted[new_k] = v
+        # Add EMA metadata buffers — the trainer's EMA wrapper (ema_pytorch) requires
+        # these in the state dict. IndicF5 was saved without them.
+        import torch as _torch
+        converted["initted"] = _torch.tensor(True)
+        converted["step"] = _torch.tensor(0, dtype=_torch.long)
         _st_save(converted, str(converted_file))
         print(f"Converted: {len(raw)} keys → {len(converted)} keys → {converted_file}")
     indicf5_model_file = str(converted_file)

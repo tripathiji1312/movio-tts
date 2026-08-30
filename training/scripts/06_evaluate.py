@@ -48,6 +48,22 @@ def _patch_f5tts_init(f5tts_src: Path):
             init_py.write_text(src)
 
 
+def _resize_text_embed(sd: dict, model) -> dict:
+    """Pad text_embed.weight in checkpoint to match model's vocab size (mean-init new rows)."""
+    import torch as _torch
+    model_sd = model.state_dict()
+    for key in list(sd.keys()):
+        if "text_embed" in key and key.endswith(".weight") and key in model_sd:
+            ckpt_w, model_w = sd[key], model_sd[key]
+            if ckpt_w.shape != model_w.shape and ckpt_w.shape[1] == model_w.shape[1]:
+                new_w = model_w.clone()
+                new_w[: ckpt_w.shape[0]] = ckpt_w
+                new_w[ckpt_w.shape[0] :] = ckpt_w.mean(dim=0, keepdim=True)
+                sd[key] = new_w
+                print(f"Resized {key}: {list(ckpt_w.shape)} → {list(model_w.shape)}")
+    return sd
+
+
 def load_f5tts_model(model_dir: str, f5tts_src: Path, device: str):
     """Load a fine-tuned or base F5-TTS model using the F5-TTS inference stack."""
     f5tts_src_str = str(f5tts_src / "src")
@@ -124,16 +140,21 @@ def load_f5tts_model(model_dir: str, f5tts_src: Path, device: str):
         # load_checkpoint uses torch.load which can't read safetensors — load manually
         from safetensors.torch import load_file as _st_load
         sd = _st_load(ckpt_path)
-        # Strip "ema_model." prefix (load_checkpoint with use_ema=True does this via EMA wrapper)
+        # Strip "ema_model." prefix — keys are already cleaned of _orig_mod
         sd = {k.replace("ema_model.", "", 1) if k.startswith("ema_model.") else k: v
               for k, v in sd.items()}
+        sd = _resize_text_embed(sd, model)
         missing, unexpected = model.load_state_dict(sd, strict=False)
-        if missing:
-            print(f"WARNING: {len(missing)} missing keys (first 5: {missing[:5]})")
-        if unexpected:
-            print(f"WARNING: {len(unexpected)} unexpected keys (first 5: {unexpected[:5]})")
+        benign = {"initted", "step"}
+        real_missing = [k for k in missing if k not in benign]
+        if real_missing:
+            print(f"WARNING: {len(real_missing)} missing keys (first 5: {real_missing[:5]})")
     else:
-        load_checkpoint(model, ckpt_path, device=device, use_ema=use_ema)
+        import torch as _torch
+        ckpt = _torch.load(ckpt_path, map_location="cpu", weights_only=False)
+        sd = ckpt.get("model_state_dict") or ckpt.get("ema_model_state_dict") or ckpt
+        sd = _resize_text_embed(sd, model)
+        model.load_state_dict(sd, strict=False)
     model = model.to(device).eval()
     vocoder = load_vocoder(vocoder_name="vocos", is_local=False, device=device)
     return model, vocoder, vocab_char_map
