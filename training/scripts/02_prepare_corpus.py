@@ -199,10 +199,11 @@ def main():
                          "combined quality score (SNR + no-clipping + spectral flatness). "
                          "Use 100 to disable. Default 30 keeps the cleanest ~3-4h from "
                          "indicvoices_r, which reduces catastrophic forgetting.")
-    ap.add_argument("--rasa-styles", default="neutral,read",
-                    help="Comma-separated Rasa 'style' values to keep (default: neutral,read). "
-                         "Use 'all' to keep every style. Other Rasa styles (angry, happy, etc.) "
-                         "add expressive speech that can hurt naturalness for a TTS assistant.")
+    ap.add_argument("--rasa-styles", default="all",
+                    help="Comma-separated Rasa 'style' values to keep (default: all). "
+                         "All Rasa styles are studio-quality — safe to keep everything. "
+                         "Set to specific values (e.g. 'neutral,read') only if you want "
+                         "to exclude expressive styles.")
     ap.add_argument("--delete-parquets", action="store_true",
                     help="Delete parquet files after extraction to free disk space.")
     ap.add_argument("--val-frac", type=float, default=0.03)
