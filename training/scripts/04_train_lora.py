@@ -154,86 +154,50 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
     free_gb = _shutil.disk_usage("/kaggle/working").free / (1024**3)
     print(f"Disk free after weight prep: {free_gb:.1f} GB")
 
-    # IndicF5 ships its own vocab — use it as the base vocab so Tamil chars are
-    # already present without needing to resize embeddings.
-    indicf5_vocab_candidates = [
-        indicf5_ckpt_dir / "vocab.txt",
-        indicf5_ckpt_dir / "src" / "f5_tts" / "infer" / "examples" / "vocab.txt",
-    ]
-    indicf5_vocab_file = None
-    for cand in indicf5_vocab_candidates:
-        if cand.exists():
-            indicf5_vocab_file = cand
-            break
-    if indicf5_vocab_file is None:
-        # IndicF5 doesn't ship a standalone vocab.txt — fall back to F5-TTS default
-        # (same 2546-char vocab; Tamil chars will be appended as new_chars)
-        indicf5_vocab_file = workdir / "src" / "f5_tts" / "infer" / "examples" / "vocab.txt"
-    print(f"Using vocab: {indicf5_vocab_file}")
+    # Download IndicF5's actual vocab from HF (checkpoints/vocab.txt).
+    # This is the vocab the model was trained with — token IDs in the embedding
+    # table are aligned to THIS file. Using any other vocab scrambles the mapping.
+    indicf5_vocab_file = indicf5_ckpt_dir / "checkpoints" / "vocab.txt"
+    if not indicf5_vocab_file.exists():
+        print("Downloading IndicF5 vocab (checkpoints/vocab.txt)...")
+        indicf5_vocab_file.parent.mkdir(parents=True, exist_ok=True)
+        _vocab_dl = hf_hub_download(
+            "ai4bharat/IndicF5", "checkpoints/vocab.txt",
+            local_dir=str(indicf5_ckpt_dir),
+        )
+        indicf5_vocab_file = Path(_vocab_dl)
+    print(f"Using IndicF5 vocab: {indicf5_vocab_file}")
 
-    # Use the base vocab and extend with any new Tamil characters.
-    # IndicF5's vocab already covers Tamil Unicode; new_chars will likely be 0.
-    pretrained_vocab_path = indicf5_vocab_file
-    with open(pretrained_vocab_path, "r", encoding="utf-8") as f:
-        pretrained_vocab = [line.rstrip("\n") for line in f]
-    # Ensure space is at index 0 (F5-TTS asserts vocab_char_map[" "] == 0).
-    # Deduplicate while preserving order so indices stay stable.
-    seen = set()
-    deduped = []
-    for ch in pretrained_vocab:
-        if ch not in seen:
-            seen.add(ch)
-            deduped.append(ch)
-    pretrained_vocab = deduped
-    if not pretrained_vocab or pretrained_vocab[0] != " ":
-        pretrained_vocab = [" "] + [ch for ch in pretrained_vocab if ch != " "]
+    # Use IndicF5's vocab exactly as-is — never add, remove, or reorder entries.
+    with open(indicf5_vocab_file, "r", encoding="utf-8") as f:
+        vocab = [line.rstrip("\n") for line in f]
 
-    existing_chars = set(pretrained_vocab)
-    new_chars = set()
-    for t in texts:
-        for ch in t:
-            if ch not in existing_chars:
-                new_chars.add(ch)
+    if not vocab or vocab[0] != " ":
+        raise SystemExit(
+            f"IndicF5 vocab does not start with space (got {vocab[0]!r}). "
+            "F5-TTS requires space at index 0."
+        )
 
-    vocab = pretrained_vocab + sorted(new_chars)
+    # Check coverage — chars not in vocab silently map to 0 (space/unknown).
+    existing_chars = set(vocab)
+    missing_chars = {ch for t in texts for ch in t if ch not in existing_chars}
+    missing_tamil = [c for c in missing_chars if "஀" <= c <= "௿"]
+    if missing_chars:
+        print(f"INFO: {len(missing_chars)} chars not in vocab → map to 0 (space): "
+              f"{sorted(missing_chars)[:20]}")
+    if missing_tamil:
+        raise SystemExit(
+            f"Core Tamil chars missing from IndicF5 vocab: {missing_tamil}. "
+            "Check your HF token and IndicF5 vocab download."
+        )
+
     vocab_path = ds_dir / "vocab.txt"
     with open(vocab_path, "w", encoding="utf-8") as f:
         for ch in vocab:
             f.write(ch + "\n")
-    print(f"Vocab: {len(vocab)} characters ({len(new_chars)} new Tamil/Tanglish chars added) -> {vocab_path}")
+    print(f"Vocab: {len(vocab)} characters (IndicF5 native, no new chars) -> {vocab_path}")
 
-    # Pre-resize the text embedding in the converted safetensors to match the final
-    # vocab size. The --pretrain loading path in finetune_cli.py loads directly from
-    # safetensors before model instantiation, so the trainer patch (which only covers
-    # the checkpoint-resume path) does not help here. Writing the right shape up front
-    # avoids the CUDA gather OOB when the first batch containing new Tamil chars is hit.
-    if new_chars:
-        from safetensors.torch import load_file as _st_load, save_file as _st_save
-        import torch as _torch
-        sd = _st_load(str(converted_file))
-        # Target specifically the nn.Embedding weight (2D), not conv weights (3D) that
-        # also live under the text_embed module. The Embedding key ends with
-        # ".text_embed.weight" while conv weights end with ".convs.N.weight".
-        embed_key = next(
-            (k for k in sd if k.endswith(".text_embed.weight") and len(sd[k].shape) == 2),
-            None,
-        )
-        if embed_key is None:
-            print(f"WARNING: no text_embed.weight (2D) found in {converted_file.name} — resize skipped")
-        if embed_key:
-            old_emb = sd[embed_key]
-            old_n, dim = old_emb.shape
-            # DiT's TextEmbedding uses nn.Embedding(text_num_embeds + 1, ...) — the +1
-            # is a null/padding slot. get_tokenizer returns len(vocab_txt_lines) as
-            # vocab_size, and DiT adds +1, so the actual embedding rows = len(vocab)+1.
-            new_n = len(vocab) + 1
-            if old_n < new_n:
-                new_emb = _torch.zeros(new_n, dim, dtype=old_emb.dtype)
-                new_emb[:old_n] = old_emb
-                new_emb[old_n:] = old_emb.mean(dim=0, keepdim=True)
-                sd[embed_key] = new_emb
-                _st_save(sd, str(converted_file))
-                print(f"Resized text_embed in converted checkpoint: [{old_n}, {dim}] → [{new_n}, {dim}]")
+    # No embedding resize needed — vocab size exactly matches the pretrained checkpoint.
 
     # Pre-place the converted file at the exact path finetune_cli.py would copy it to.
     # finetune_cli computes: workdir/ckpts/{dataset_name}/pretrained_{basename(pretrain)}.
@@ -268,54 +232,8 @@ def path_f5tts(data_dir: Path, out_dir: Path, epochs: int, batch_size: int):
     ds.save_to_disk(str(ds_dir / "raw"))
     print(f"Arrow dataset saved to: {ds_dir / 'raw'}")
 
-    # Patch F5-TTS trainer to handle embedding size mismatch.
-    # The pretrained checkpoint has text_embed of shape [2546, 512] but our extended
-    # vocab creates [2546+N, 512]. We patch the checkpoint loading to resize the
-    # embedding tensor by padding with the mean of existing embeddings.
-    trainer_py = workdir / "src" / "f5_tts" / "model" / "trainer.py"
-    trainer_src = trainer_py.read_text()
-    patch_marker = "# MOVIO_PATCHED"
-    if patch_marker not in trainer_src:
-        # Add a helper function at the top (after imports)
-        patch_fn = '''
-# MOVIO_PATCHED
-def _resize_state_dict_embeddings(state_dict, model_state_dict):
-    """Resize text embedding weights in checkpoint to match the model's vocab size."""
-    import torch as _torch
-    for key in list(state_dict.keys()):
-        if "text_embed" in key and "weight" in key and key in model_state_dict:
-            ckpt_shape = state_dict[key].shape
-            model_shape = model_state_dict[key].shape
-            if ckpt_shape != model_shape and ckpt_shape[1] == model_shape[1]:
-                old = state_dict[key]
-                new = _torch.zeros(model_shape, dtype=old.dtype, device=old.device)
-                new[:ckpt_shape[0]] = old
-                # Init new embeddings with mean of existing
-                new[ckpt_shape[0]:] = old.mean(dim=0, keepdim=True)
-                state_dict[key] = new
-    return state_dict
-
-'''
-        # Insert after the last top-level import
-        import_end = trainer_src.rfind("\nimport ")
-        if import_end == -1:
-            import_end = trainer_src.rfind("\nfrom ")
-        insert_pos = trainer_src.index("\n", import_end + 1) + 1
-        trainer_src = trainer_src[:insert_pos] + patch_fn + trainer_src[insert_pos:]
-
-        # Patch the two load_state_dict calls to resize first
-        trainer_src = trainer_src.replace(
-            'self.ema_model.load_state_dict(checkpoint["ema_model_state_dict"])',
-            '_resize_state_dict_embeddings(checkpoint["ema_model_state_dict"], self.ema_model.state_dict())\n'
-            '            self.ema_model.load_state_dict(checkpoint["ema_model_state_dict"])',
-        )
-        trainer_src = trainer_src.replace(
-            'self.accelerator.unwrap_model(self.model).load_state_dict(checkpoint["model_state_dict"])',
-            '_resize_state_dict_embeddings(checkpoint["model_state_dict"], self.accelerator.unwrap_model(self.model).state_dict())\n'
-            '            self.accelerator.unwrap_model(self.model).load_state_dict(checkpoint["model_state_dict"])',
-        )
-        trainer_py.write_text(trainer_src)
-        print("Patched trainer.py for text embedding resize")
+    # No trainer.py patching needed — vocab size matches IndicF5 exactly (2545 chars),
+    # so the embedding table shape is unchanged and no resize is required.
 
     # Patch __init__.py to make Trainer import optional — it triggers
     # dataset.py → datasets 5.0.0 → huggingface_hub version mismatch on Kaggle
@@ -389,46 +307,49 @@ def _resize_state_dict_embeddings(state_dict, model_state_dict):
         print(f"WARNING: {len(_missing)} chars not in vocab (will map to idx 0/space): {sorted(_missing)[:20]}")
     assert _max_idx <= _vocab_size - 1, f"Token index {_max_idx} >= vocab_size {_vocab_size} — OOB!"
 
-    env = {**os.environ, "CUDA_LAUNCH_BLOCKING": "1"}
     print("Running:", " ".join(cmd))
-    subprocess.run(cmd, check=True, cwd=str(workdir), env=env)
+    subprocess.run(cmd, check=True, cwd=str(workdir))
 
     # Keep only the final checkpoint (model_last.pt) to save disk for export.
-    # F5-TTS finetune_cli saves under ckpts/{exp_name}/, not ckpts/{dataset_name}/.
+    # Find checkpoint dir — F5-TTS versions vary on whether they key by dataset_name
+    # or exp_name. Check both.
     exp_name = "F5TTS_v1_Base"
-    ckpt_dir = workdir / "ckpts" / exp_name
-    if not ckpt_dir.exists():
-        # Fallback: older F5-TTS versions key by dataset_name
-        ckpt_dir_fallback = workdir / "ckpts" / dataset_name
-        if ckpt_dir_fallback.exists():
-            ckpt_dir = ckpt_dir_fallback
-        else:
-            raise SystemExit(
-                f"No checkpoint directory found after training.\n"
-                f"Checked: {workdir / 'ckpts' / exp_name}\n"
-                f"     and: {workdir / 'ckpts' / dataset_name}"
-            )
+    ckpt_dir = None
+    for candidate_dir in [workdir / "ckpts" / dataset_name, workdir / "ckpts" / exp_name]:
+        if candidate_dir.exists() and any(candidate_dir.glob("model_*.pt")):
+            ckpt_dir = candidate_dir
+            break
+    if ckpt_dir is None:
+        raise SystemExit(
+            f"No checkpoint directory with .pt files found after training.\n"
+            f"Checked: {workdir / 'ckpts' / dataset_name}\n"
+            f"     and: {workdir / 'ckpts' / exp_name}"
+        )
     import shutil
     last_pt = ckpt_dir / "model_last.pt"
     if not last_pt.exists():
-        # model_last.pt is only written every last_per_updates steps; if training ended
-        # before the first save, fall back to the most recent numbered checkpoint.
         candidates = sorted(ckpt_dir.glob("model_*.pt"))
         if candidates:
             last_pt = candidates[-1]
             print(f"model_last.pt not found; using most recent: {last_pt.name}")
         else:
             raise SystemExit(f"No checkpoint .pt files found in {ckpt_dir} after training.")
-    shutil.copy2(last_pt, out_dir / "model_last.pt")
-    print(f"Copied checkpoint: {last_pt.name}")
-    # Remove intermediates to free disk for merge/export
+    # Free pretrained safetensors and intermediates BEFORE copying to avoid ENOSPC.
+    for safetensors in list(ckpt_dir.glob("pretrained_*.safetensors")):
+        safetensors.unlink(missing_ok=True)
+        print(f"Removed pretrained safetensors: {safetensors.name}")
     for pt in list(ckpt_dir.glob("model_*.pt")):
         if pt != last_pt:
             pt.unlink(missing_ok=True)
             print(f"Removed intermediate: {pt.name}")
-    for safetensors in list(ckpt_dir.glob("pretrained_*.safetensors")):
-        safetensors.unlink(missing_ok=True)
-        print(f"Removed pretrained safetensors: {safetensors.name}")
+    # Also free the source converted checkpoint — the checkpoint we need is last_pt now.
+    if converted_file.exists() and str(converted_file) != str(last_pt):
+        converted_file.unlink(missing_ok=True)
+        print(f"Freed {converted_file.name} to reclaim disk")
+    # Move instead of copy to avoid needing 2× disk space.
+    dest_pt = out_dir / "model_last.pt"
+    shutil.move(str(last_pt), str(dest_pt))
+    print(f"Moved checkpoint: {last_pt.name} → {dest_pt}")
     free_gb = _shutil.disk_usage("/kaggle/working").free / (1024**3)
     print(f"Disk free after training: {free_gb:.1f} GB")
     print(f"Checkpoints in: {out_dir}")

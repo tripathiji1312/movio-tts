@@ -5,9 +5,8 @@ Serving architecture for CPU-only deployment:
   ┌─────────────────────────────────────────────────────┐
   │  Stage A: text normalisation  (<1 ms, thread pool)  │
   │  Stage B: Tanglish router     (<1 ms, thread pool)  │
-  │  Stage C: HybridEngine                              │
-  │    ├─ disk cache hit  →  ~5 ms   (PCM from disk)   │
-  │    └─ MMS-TTS miss    →  ~100 ms (single-pass VITS) │
+  │  Stage C: IndicF5Engine                             │
+  │    └─ CFM-DiT zero-shot TTS  →  ~250-400 ms (GPU)  │
   └─────────────────────────────────────────────────────┘
 
 Concurrency model:
@@ -19,14 +18,16 @@ Concurrency model:
 """
 
 import asyncio
+import io
 import logging
 import time
 from dataclasses import dataclass, field
 
 import numpy as np
 
-from movio.acoustic.hybrid_engine import HybridEngine
+from movio.acoustic.indicf5_engine import IndicF5Engine
 from movio.cache.audio_cache import AudioCache
+from movio.router.en2ta import transliterate_english_to_tamil
 from movio.router.tanglish_router import TanglishRouter
 from movio.textnorm.normalizer import TextNormalizer
 from movio.utils.audio import float_to_pcm16
@@ -65,14 +66,14 @@ class TTSPipeline:
 
     A: context-aware text normalisation (OTP, phone, booking ID, time, dates)
     B: Tanglish router (LID + xlit + <cs> code-switch boundaries)
-    C: HybridEngine — disk cache first, MMS-TTS fallback
+    C: IndicF5Engine — zero-shot CFM-DiT TTS (Tamil + English + Tanglish)
     """
 
     def __init__(self, config: dict):
         self.config = config
         self.normalizer = TextNormalizer(config)
         self.router = TanglishRouter(config)
-        self.engine = HybridEngine(config)
+        self.engine = IndicF5Engine(config)
         self.audio_cache = AudioCache(config)
         self.sample_rate = self.engine.SAMPLE_RATE
 
@@ -134,6 +135,9 @@ class TTSPipeline:
 
     async def _synthesize_queued(self, text: str, voice_name: str | None) -> np.ndarray:
         """Submit to the worker queue and await the result."""
+        if self._synth_queue is None:
+            # Warmup was deferred — load now on first request
+            await self.warmup()
         loop = asyncio.get_running_loop()
         fut: asyncio.Future = loop.create_future()
         await self._synth_queue.put((text, voice_name, fut))
@@ -162,7 +166,16 @@ class TTSPipeline:
         timings.stage_b_ms = (time.perf_counter() - t1) * 1000
 
         voice_name = request.voice or None
-        synth_text = route.normalized_text
+        # Strip <cs> boundary tokens — they are internal router markers and
+        # confuse the acoustic model if passed through as literal text.
+        cs_token = getattr(self.router, "cs_token", "<cs>")
+        synth_text = route.normalized_text.replace(cs_token, " ").strip()
+        import re as _re
+        synth_text = _re.sub(r" {2,}", " ", synth_text)
+
+        # Transliterate any remaining Latin-script words to Tamil phonetics
+        # so IndicF5 can pronounce them (it only speaks Tamil script).
+        synth_text = transliterate_english_to_tamil(synth_text)
 
         # AudioCache check (in-memory / Redis — separate from disk phrase cache)
         cached_pcm = await self.audio_cache.get(synth_text, voice_name or "default", 0)
@@ -171,11 +184,9 @@ class TTSPipeline:
             audio = np.frombuffer(cached_pcm, dtype="<i2").astype(np.float32) / 32768.0
         else:
             t2 = time.perf_counter()
-            # HybridEngine: checks disk phrase cache first, then MMS-TTS
             audio = await self._synthesize_queued(synth_text, voice_name)
             timings.stage_c_first_chunk_ms = (time.perf_counter() - t2) * 1000
-            timings.engine_used = "hybrid"
-            # Write through to AudioCache
+            timings.engine_used = "indicf5"
             asyncio.create_task(
                 self.audio_cache.set(synth_text, voice_name or "default", 0,
                                      float_to_pcm16(audio))
@@ -193,9 +204,8 @@ class TTSPipeline:
     async def stream_pcm_chunks(self, request: SynthesisRequest):
         """Async generator yielding PCM16 chunks as they arrive.
 
-        For HybridEngine, this yields the full audio in one chunk because
-        both the disk cache and MMS-TTS return the full waveform at once.
-        Streaming still reduces TTFA vs waiting for the HTTP response.
+        Yields the full audio in one chunk. Streaming still reduces TTFA
+        vs waiting for the full HTTP response.
         """
         loop = asyncio.get_running_loop()
         t0 = time.perf_counter()

@@ -4,6 +4,6 @@
 # speaker's timbre at inference time.
 name: ta_female_neutral
 ref_audio: ref.wav
-ref_text: "இது ஒரு மாதிரி குறிப்பு; உண்மையான குரல் கோப்பை இங்கே வைக்கவும்."
+ref_text: "ஆனா நீங்க இப்போதான் மொத தடவையா இன்டர்நெட் யூஸ் பண்றீங்க அப்படின்னா இதை முழுசா கத்துக்க கொஞ்சம் நாள் ஆகும்."
 gender: female
 style: neutral

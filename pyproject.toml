@@ -7,7 +7,7 @@ name = "movio-tts"
 version = "0.2.0"
 description = "Solution 4 — VITS + FastSpeech2 cascaded TTS for Tamil / English / Tanglish"
 readme = "README.md"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.11,<3.14"
 license = { text = "Apache-2.0" }
 
 dependencies = [
@@ -24,19 +24,9 @@ dependencies = [
     "torch>=2.2",
     "transformers>=4.40",
     "huggingface_hub>=0.22",
-    "onnxruntime>=1.17",
-    "onnx>=1.22.0",
-    "onnxscript>=0.7.1",
-]
-
-[project.optional-dependencies]
-vits = [
-    "TTS>=0.22.0",
-]
-dev = [
-    "pytest>=8.0",
-    "pytest-asyncio>=0.23",
-    "ruff>=0.5",
+    "f5-tts>=1.1.0",
+    "safetensors>=0.4",
+    "vocos>=0.1.0",
 ]
 
 [tool.setuptools.packages.find]
