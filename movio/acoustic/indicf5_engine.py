@@ -1,7 +1,7 @@
 """IndicF5Engine — F5-TTS CFM-DiT acoustic backbone (337M params, 24 kHz).
 
-Uses the F5-TTS inference stack directly. Supports both the ai4bharat/IndicF5
-base model (MIT licensed) and a locally exported fine-tuned bundle.
+Uses IndicF5's own inference stack (third_party/IndicF5/) — NOT the pip-installed
+F5-TTS, which has a different architecture and produces garbage with IndicF5 weights.
 
 model_path config options:
   "base"             — downloads ai4bharat/IndicF5 weights from HF hub (MIT)
@@ -19,6 +19,8 @@ from movio.acoustic.chunking import chunk_text
 from movio.utils.audio import ms_to_samples
 
 logger = logging.getLogger(__name__)
+
+_INDICF5_SRC = str(Path(__file__).resolve().parent.parent.parent / "third_party" / "IndicF5")
 
 
 class VoiceProfile:
@@ -46,22 +48,6 @@ def load_voice_profiles(voices_dir: str | Path) -> dict[str, VoiceProfile]:
     return profiles
 
 
-def _patch_f5tts_init(f5tts_src: Path) -> None:
-    """Wrap Trainer import in try/except so __init__.py doesn't trigger
-    dataset.py → datasets 5.0.0 → huggingface_hub.parse_hf_uri crash."""
-    init_py = f5tts_src / "src" / "f5_tts" / "model" / "__init__.py"
-    if not init_py.exists():
-        return
-    src = init_py.read_text()
-    if "try:" not in src and "from f5_tts.model.trainer import Trainer" in src:
-        src = src.replace(
-            "from f5_tts.model.trainer import Trainer",
-            "try:\n    from f5_tts.model.trainer import Trainer\nexcept ImportError:\n    Trainer = None",
-        )
-        init_py.write_text(src)
-        logger.info("Patched f5_tts/model/__init__.py (optional Trainer import)")
-
-
 class IndicF5Engine:
     """F5-TTS CFM-DiT acoustic backbone.
 
@@ -80,7 +66,6 @@ class IndicF5Engine:
     def __init__(self, config: dict):
         cfg = config.get("stage_c", {}).get("indicf5", {})
         self.model_path = cfg.get("model_path", "base")
-        self.f5tts_dir = cfg.get("f5tts_dir")  # path to cloned F5-TTS repo; None if pip-installed
         self.device = cfg.get("device", "cuda")
         self.num_flow_steps = int(cfg.get("num_flow_steps", 12))
         self.sway_coef = float(cfg.get("sway_sampling_coef", -1.0))
@@ -97,38 +82,41 @@ class IndicF5Engine:
 
     # ── path / import helpers ────────────────────────────────────────────────
 
-    def _ensure_path(self) -> None:
-        if self.f5tts_dir:
-            src = str(Path(self.f5tts_dir) / "src")
-            if src not in sys.path:
-                sys.path.insert(0, src)
-            _patch_f5tts_init(Path(self.f5tts_dir))
+    _path_set = False
 
-    def _vocab_path_for_base(self) -> str:
-        if self.f5tts_dir:
-            p = Path(self.f5tts_dir) / "src" / "f5_tts" / "infer" / "examples" / "vocab.txt"
+    @classmethod
+    def _ensure_indicf5_path(cls) -> None:
+        if cls._path_set:
+            return
+        if _INDICF5_SRC not in sys.path:
+            sys.path.insert(0, _INDICF5_SRC)
+        for k in list(sys.modules):
+            if k.startswith("f5_tts"):
+                del sys.modules[k]
+        cls._path_set = True
+
+    def _vocab_path(self) -> str:
+        if self.model_path != "base":
+            p = Path(self.model_path) / "vocab.txt"
             if p.exists():
                 return str(p)
-        try:
-            import f5_tts
-            p = Path(f5_tts.__file__).parent / "infer" / "examples" / "vocab.txt"
-            if p.exists():
-                return str(p)
-        except ImportError:
-            pass
-        raise RuntimeError(
-            "Cannot locate F5-TTS vocab.txt. Set stage_c.indicf5.f5tts_dir in settings.yaml."
-        )
+        indicf5_vocab = Path("models/indicf5_tanglish") / "vocab.txt"
+        if indicf5_vocab.exists():
+            return str(indicf5_vocab)
+        vocab_in_third_party = Path(_INDICF5_SRC) / "checkpoints" / "vocab.txt"
+        if vocab_in_third_party.exists():
+            return str(vocab_in_third_party)
+        from huggingface_hub import hf_hub_download
+        return hf_hub_download("ai4bharat/IndicF5", "checkpoints/vocab.txt")
 
     # ── model loading ────────────────────────────────────────────────────────
 
     def _load(self) -> None:
         import torch
-        self._ensure_path()
+        self._ensure_indicf5_path()
 
         from f5_tts.model.backbones.dit import DiT
-        from f5_tts.model.cfm import CFM
-        from f5_tts.infer.utils_infer import get_tokenizer, load_checkpoint, load_vocoder
+        from f5_tts.infer.utils_infer import load_model, load_vocoder
 
         device = (
             self.device
@@ -137,14 +125,11 @@ class IndicF5Engine:
         )
         self._device = device
 
+        vocab_path = self._vocab_path()
+
         if self.model_path == "base":
-            # ai4bharat/IndicF5 — MIT licensed, Tamil-aware, commercially usable.
             from huggingface_hub import hf_hub_download
-            ckpt_path = hf_hub_download(
-                "ai4bharat/IndicF5", "model.safetensors"
-            )
-            vocab_path = self._vocab_path_for_base()
-            use_ema = False  # IndicF5 safetensors are not EMA-wrapped
+            ckpt_path = hf_hub_download("ai4bharat/IndicF5", "model.safetensors")
         else:
             bundle = Path(self.model_path)
             if not bundle.is_dir():
@@ -153,28 +138,21 @@ class IndicF5Engine:
                     "Run training/scripts/05_merge_export.py first."
                 )
             ckpt_path = str(bundle / "model.pt")
-            vocab_path = str(bundle / "vocab.txt")
-            use_ema = False
 
-        vocab_char_map, vocab_size = get_tokenizer(vocab_path, "custom")
-
-        model = CFM(
-            transformer=DiT(**self._MODEL_CFG, text_num_embeds=vocab_size, mel_dim=100),
-            mel_spec_kwargs=dict(
-                n_fft=1024, hop_length=256, win_length=1024,
-                n_mel_channels=100, target_sample_rate=self.SAMPLE_RATE,
-                mel_spec_type="vocos",
-            ),
-            vocab_char_map=vocab_char_map,
+        model = load_model(
+            DiT,
+            self._MODEL_CFG,
+            ckpt_path=ckpt_path,
+            mel_spec_type="vocos",
+            vocab_file=vocab_path,
+            device=device,
         )
-        load_checkpoint(model, ckpt_path, device=device, use_ema=use_ema)
-        model = model.to(device).eval()
+        model = model.eval()
 
         vocoder = load_vocoder(vocoder_name="vocos", is_local=False, device=device)
 
         self._model = model
         self._vocoder = vocoder
-        self._vocab_char_map = vocab_char_map
         logger.info(
             "IndicF5Engine ready: model=%s device=%s flow_steps=%d",
             self.model_path, device, self.num_flow_steps,
@@ -205,7 +183,7 @@ class IndicF5Engine:
         """Preprocess + cache reference audio (amortised across all requests)."""
         key = voice.ref_audio_path
         if key not in self._ref_cache:
-            self._ensure_path()
+            self._ensure_indicf5_path()
             from f5_tts.infer.utils_infer import preprocess_ref_audio_text
             ref_audio, ref_text = preprocess_ref_audio_text(
                 voice.ref_audio_path, voice.ref_text
@@ -222,7 +200,7 @@ class IndicF5Engine:
         flow_steps: int | None = None,
     ) -> np.ndarray:
         self.load()
-        self._ensure_path()
+        self._ensure_indicf5_path()
         from f5_tts.infer.utils_infer import infer_process
 
         ref_audio, ref_text = self._get_ref_audio(voice)

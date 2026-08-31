@@ -73,12 +73,13 @@ async def voices():
 async def engine_stats():
     engine = pipeline.engine
     stats = {
-        "engine": "hybrid",
+        "engine": "indicf5",
         "model_path": engine.model_path,
         "sample_rate": engine.SAMPLE_RATE,
         "is_ready": engine.is_ready,
     }
-    stats.update(engine.cache_stats())
+    if hasattr(engine, "cache_stats"):
+        stats.update(engine.cache_stats())
     return stats
 
 

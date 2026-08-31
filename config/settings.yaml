@@ -53,11 +53,10 @@ stage_c:
     # Set model_path to your exported fine-tuned bundle after training, or
     # leave "base" to use ai4bharat/IndicF5 for pre-cache synthesis.
     model_path: "base"
-    f5tts_dir: ""
     device: "cpu"
-    num_flow_steps: 12
+    num_flow_steps: 24
     sway_sampling_coef: -1.0
-    cfg_strength: 2.0
+    cfg_strength: 2.5
     speed: 1.0
     voices_dir: "config/voices"
     default_voice: ""
