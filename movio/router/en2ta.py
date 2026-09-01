@@ -32,6 +32,14 @@ _LEXICON: dict[str, str] = {
     "pickup": "பிக்கப்",
     "drop": "ட்ராப்",
     "driver": "டிரைவர்",
+    "for": "ஃபார்",
+    "from": "ஃப்ரம்",
+    "your": "யுவர்",
+    "you": "யூ",
+    "with": "வித்",
+    "the": "த",
+    "is": "இஸ்",
+    "it": "இட்",
     "booking": "புக்கிங்",
     "book": "புக்",
     "booked": "புக்ட்",
@@ -118,11 +126,31 @@ _LEXICON: dict[str, str] = {
     "completed": "கம்ப்ளீட்டட்",
 }
 
-# English digit words — spoken individually for codes (4832 → four eight three two)
-_DIGIT_WORDS = {
-    "0": "zero", "1": "one", "2": "two", "3": "three", "4": "four",
-    "5": "five", "6": "six", "7": "seven", "8": "eight", "9": "nine",
+# Digits → natural Tamil loanword forms (bypass g2p — these are always correct)
+# ஃ for /f/ sounds: four→ஃபோர், five→ஃபைவ்
+_DIGIT_TAMIL = {
+    "0": "ஸீரோ", "1": "வன்", "2": "டூ", "3": "த்ரீ", "4": "ஃபோர்",
+    "5": "ஃபைவ்", "6": "சிக்ஸ்", "7": "செவன்", "8": "எயிட்", "9": "நைன்",
 }
+
+# Tamil number words for time (7:30 → ஏழு முப்பது)
+_TAMIL_NUMS = {
+    0: "சுழியம்", 1: "ஒன்று", 2: "இரண்டு", 3: "மூன்று", 4: "நான்கு",
+    5: "ஐந்து", 6: "ஆறு", 7: "ஏழு", 8: "எட்டு", 9: "ஒன்பது", 10: "பத்து",
+    11: "பதினொன்று", 12: "பன்னிரண்டு", 13: "பதிமூன்று", 14: "பதினான்கு",
+    15: "பதினைந்து", 16: "பதினாறு", 17: "பதினேழு", 18: "பதினெட்டு",
+    19: "பத்தொன்பது", 20: "இருபது", 21: "இருபத்தொன்று", 22: "இருபத்திரண்டு",
+    23: "இருபத்துமூன்று", 24: "இருபத்தினான்கு", 25: "இருபத்தைந்து",
+    30: "முப்பது", 35: "முப்பத்தைந்து", 40: "நாற்பது", 45: "நாற்பத்தைந்து",
+    50: "ஐம்பது", 55: "ஐம்பத்தைந்து", 0o0: "சுழியம்",
+}
+
+def _time_to_tamil(h: int, m: int) -> str:
+    h_word = _TAMIL_NUMS.get(h, str(h))
+    if m == 0:
+        return f"{h_word}"
+    m_word = _TAMIL_NUMS.get(m, str(m))
+    return f"{h_word} {m_word}"
 
 # Tamil letter names for abbreviations (OTP → ஓ டீ பீ)
 _LETTER_NAMES: dict[str, str] = {
@@ -134,8 +162,11 @@ _LETTER_NAMES: dict[str, str] = {
     "Y": "வை", "Z": "ஸெட்",
 }
 
-# Digit sequence: expand digits not in times/decimals
-_DIGIT_SEQ_RE = re.compile(r"(?<![:\d\.])(\d{2,6})(?![:\.\d])")
+# Expand digit sequences (2-6 digits) that are NOT part of time (7:30) or decimal (3.5)
+# "4832." is fine — the dot is sentence punctuation, not a decimal point
+_DIGIT_SEQ_RE = re.compile(r"(?<![:\d])(\d{2,6})(?![:\.]\d)")
+# Time pattern: 7:30, 10:15 etc → expand to Tamil words
+_TIME_RE = re.compile(r"\b(\d{1,2}):(\d{2})\b")
 _LATIN_WORD_RE = re.compile(r"[A-Za-z]+")
 _TAMIL_RE = re.compile(r"[஀-௿]")
 
@@ -299,9 +330,16 @@ def transliterate_english_to_tamil(text: str) -> str:
     Tamil-script tokens pass through unchanged. Times (7:30) and decimals
     (3.5) are protected from digit expansion.
     """
+    # Expand time patterns first (7:30 → ஏழு முப்பது) before digit expansion
+    def _expand_time(m: re.Match) -> str:
+        h, mn = int(m.group(1)), int(m.group(2))
+        return _time_to_tamil(h, mn)
+
+    text = _TIME_RE.sub(_expand_time, text)
+
     # Expand digit sequences (OTPs, PINs, codes) to individual digit words
     def _expand_digits(m: re.Match) -> str:
-        return " ".join(_transliterate_word(_DIGIT_WORDS[d]) for d in m.group(1))
+        return " ".join(_DIGIT_TAMIL[d] for d in m.group(1))
 
     text = _DIGIT_SEQ_RE.sub(_expand_digits, text)
 

@@ -130,6 +130,7 @@ class IndicF5Engine:
         if self.model_path == "base":
             from huggingface_hub import hf_hub_download
             ckpt_path = hf_hub_download("ai4bharat/IndicF5", "model.safetensors")
+            use_ema = True   # base safetensors has ema_model._orig_mod. keys
         else:
             bundle = Path(self.model_path)
             if not bundle.is_dir():
@@ -138,6 +139,7 @@ class IndicF5Engine:
                     "Run training/scripts/05_merge_export.py first."
                 )
             ckpt_path = str(bundle / "model.pt")
+            use_ema = False  # fine-tuned .pt has model_state_dict directly
 
         model = load_model(
             DiT,
@@ -145,6 +147,7 @@ class IndicF5Engine:
             ckpt_path=ckpt_path,
             mel_spec_type="vocos",
             vocab_file=vocab_path,
+            use_ema=use_ema,
             device=device,
         )
         model = model.eval()

@@ -52,7 +52,7 @@ stage_c:
     # Used ONLY by phrase_cache.py (offline pre-synthesis), NOT at runtime.
     # Set model_path to your exported fine-tuned bundle after training, or
     # leave "base" to use ai4bharat/IndicF5 for pre-cache synthesis.
-    model_path: "base"
+    model_path: "models/indicf5_tanglish_v2"
     device: "cpu"
     num_flow_steps: 24
     sway_sampling_coef: -1.0

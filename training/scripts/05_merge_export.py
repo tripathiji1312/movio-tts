@@ -102,13 +102,13 @@ def main():
         shutil.copy(vocab_src, out / "vocab.txt")
         print(f"Copied vocab: {vocab_src} ({sum(1 for _ in open(vocab_src))} chars)")
     else:
-        # Fall back to the pretrained vocab
-        vocab_fallback = f5tts_dir / "src" / "f5_tts" / "infer" / "examples" / "vocab.txt"
-        if vocab_fallback.exists():
-            shutil.copy(vocab_fallback, out / "vocab.txt")
-            print(f"Copied pretrained vocab (training vocab not found): {vocab_fallback}")
-        else:
-            print("WARNING: vocab.txt not found — you must supply it manually for inference")
+        # Fall back to downloading IndicF5's vocab directly — NEVER use F5-TTS's
+        # English-only vocab (infer/examples/vocab.txt) which has zero Tamil chars.
+        print("Training vocab not found — downloading IndicF5 vocab from HF...")
+        from huggingface_hub import hf_hub_download
+        vocab_dl = hf_hub_download("ai4bharat/IndicF5", "checkpoints/vocab.txt")
+        shutil.copy(vocab_dl, out / "vocab.txt")
+        print(f"Copied IndicF5 vocab from HF ({sum(1 for _ in open(out / 'vocab.txt'))} chars)")
 
     # Write a config.json so the inference code knows model architecture
     config = {

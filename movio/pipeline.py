@@ -212,7 +212,11 @@ class TTSPipeline:
 
         norm = self.normalizer.normalize(request.text)
         route = self.router.route(norm.text)
-        synth_text = route.normalized_text
+        cs_token = getattr(self.router, "cs_token", "<cs>")
+        synth_text = route.normalized_text.replace(cs_token, " ").strip()
+        import re as _re
+        synth_text = _re.sub(r" {2,}", " ", synth_text)
+        synth_text = transliterate_english_to_tamil(synth_text)
         voice_name = request.voice or None
 
         audio = await self._synthesize_queued(synth_text, voice_name)
