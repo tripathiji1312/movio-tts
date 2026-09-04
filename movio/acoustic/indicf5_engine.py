@@ -13,6 +13,8 @@ import sys
 from pathlib import Path
 from typing import Iterator
 
+from pydub import AudioSegment
+
 import numpy as np
 
 from movio.acoustic.chunking import chunk_text
@@ -212,14 +214,18 @@ class IndicF5Engine:
             default_v = self.voices.get(self.default_voice)
             if default_v and Path(default_v.ref_audio_path).exists():
                 ref_path = default_v.ref_audio_path
-        ref_text = (voice.ref_text or "").strip() or "ஆனா நீங்க இப்போதான் மொத தடவையா இன்டர்நெட் யூஸ் பண்றீங்க அப்படின்னா இதை முழுசா கத்துக்க கொஞ்சம் நாள் ஆகும்."
+        ref_text = (voice.ref_text or "").strip() or "ஆனா நீங்க இப்போதான் மொத தடவியா இன்டர்நெட் யூஸ் பண்றீங்க அ Atenas..."
         key = (ref_path, ref_text)
         if key not in self._ref_cache:
             self._ensure_indicf5_path()
             from f5_tts.infer.utils_infer import preprocess_ref_audio_text
-            ref_audio, proc_ref_text = preprocess_ref_audio_text(
-                ref_path, ref_text
-            )
+            if not ref_path or not Path(ref_path).exists():
+                ref_audio = AudioSegment.silent(duration=500)
+                proc_ref_text = ref_text
+            else:
+                ref_audio, proc_ref_text = preprocess_ref_audio_text(
+                    ref_path, ref_text
+                )
             self._ref_cache[key] = (ref_audio, proc_ref_text)
         return self._ref_cache[key]
 
