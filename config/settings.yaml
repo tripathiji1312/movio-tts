@@ -1,9 +1,13 @@
-# movio TTS — CPU-optimised hybrid serving
-# Architecture: disk cache (~5ms) + MMS-TTS fallback (~100ms) → p99 ≤500ms on CPU
+# movio TTS — CPU-first live streaming (IndicF5, 24 kHz)
+# Architecture: Stage A → B → IndicF5Engine (chunked streaming, 12xEuler)
+# Active runtime is IndicF5Engine (movio/pipeline.py:101); hybrid/MMS
+# modules are retained but unwired. Disk phrase cache (~5ms) is a
+# future optimisation, not on the current hot path.
 #
-# Stage A → text normalisation
-# Stage B → Tanglish router
-# Stage C → HybridEngine (disk phrase cache first, MMS-TTS on miss)
+# Live-stream profile (CPU-first, GPU-ready by flipping device to "cuda"):
+#   device cpu, num_flow_steps 12, ode euler, sway -1.0, cfg 2.0.
+#   24xMidpoint is ~4x slower — keep 24xEuler for offline phrase_cache only.
+#   ode_method is bound at load (indicf5_engine.py:145-154) — restart after edit.
 #
 # One-time setup:
 #   python -m movio.acoustic.phrase_cache --config config/settings.yaml
@@ -14,8 +18,8 @@ server:
   host: "0.0.0.0"
   port: 8000
   ws_chunk_ms: 50
-  sample_rate: 16000        # MMS-TTS native rate (16 kHz)
-  opus_bitrate_kbps: 24     # lower bandwidth at 16 kHz
+  sample_rate: 24000        # IndicF5 native rate (24 kHz, single truth = engine.SAMPLE_RATE)
+  opus_bitrate_kbps: 24     # lower bandwidth placeholder (no Opus route yet)
 
 stage_a:
   text_normalization:
@@ -28,7 +32,7 @@ stage_a:
 stage_b:
   router:
     lid_backend: "auto"
-    xlit_backend: "auto"
+    xlit_backend: "none"
     lid_target_langs: ["ta", "en", "ta_roman"]
     insert_cs_tokens: true
     cs_token: "<cs>"
@@ -41,7 +45,7 @@ stage_c:
     # Pre-synthesised phrase cache (built by phrase_cache.py).
     # ~200 phrases × ~32 KB each = ~6 MB on disk.
     cache_dir: "models/phrase_cache"
-    default_voice: "default"
+    default_voice: "ta_female_neutral"
 
   mms:
     # Facebook MMS-TTS Tamil — real-time fallback for uncached phrases.
@@ -49,17 +53,20 @@ stage_c:
     model_id: "facebook/mms-tts-tam"
 
   indicf5:
-    # Used ONLY by phrase_cache.py (offline pre-synthesis), NOT at runtime.
+    # LIVE runtime profile (CPU-first). indicf5_engine defaults are
+    # 12/euler/-1.0/2.0; YAML wins — keep 12/euler for serving.
     # Set model_path to your exported fine-tuned bundle after training, or
-    # leave "base" to use ai4bharat/IndicF5 for pre-cache synthesis.
-    model_path: "models/indicf5_tanglish_v2"
+    # leave "base" to use ai4bharat/IndicF5.
+    # NOTE: ode_method binds at load — restart the server after any change.
+    model_path: "base"
     device: "cpu"
-    num_flow_steps: 24
+    num_flow_steps: 16
     sway_sampling_coef: -1.0
-    cfg_strength: 2.5
-    speed: 1.0
+    cfg_strength: 2.0
+    ode_method: "euler"
+    speed: 0.95
     voices_dir: "config/voices"
-    default_voice: ""
+    default_voice: "ta_female_neutral"
 
 cache:
   backend: "memory"

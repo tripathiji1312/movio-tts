@@ -1,0 +1,35 @@
+{
+  "concurrency_1": {
+    "n_requests": 1,
+    "n_errors": 0,
+    "ttfa_p50_ms": 13.0,
+    "ttfa_p95_ms": 13.0,
+    "ttfa_p99_ms": 13.0,
+    "ttfa_mean_ms": 13.0,
+    "e2e_p50_ms": 21.8,
+    "e2e_p95_ms": 21.8,
+    "e2e_p99_ms": 21.8,
+    "req_per_sec": 45.409,
+    "audio_minutes": 0.0407,
+    "audio_min_per_hour_at_this_load": 6655.1,
+    "errors": []
+  },
+  "resources": {
+    "cpu_pct": {
+      "mean": 0.0,
+      "max": 0.0
+    },
+    "ram_gb": {
+      "mean": 0.032,
+      "max": 0.032
+    },
+    "gpu_mem_gb": {
+      "mean": null,
+      "max": null
+    }
+  },
+  "verdict": {
+    "p99_ttfa_target_ms": 500,
+    "all_levels_within_target": true
+  }
+}

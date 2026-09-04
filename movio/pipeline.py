@@ -21,6 +21,7 @@ import asyncio
 import io
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -34,12 +35,44 @@ from movio.utils.audio import float_to_pcm16
 
 logger = logging.getLogger(__name__)
 
+# Dedicated single-thread executor for the streaming generator. It bypasses
+# the serial POST queue (_synthesis_worker) so WS first-chunk latency is one
+# prosodic chunk, not the full utterance + queue wait. max_workers=1 avoids
+# two DiT forwards fighting over the same 4 CPUs.
+_stream_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="movio-stream")
+
+_LATIN_RE = _re_latin = __import__("re").compile(r"[A-Za-z]")
+_TAMIL_RE = _re_tamil = __import__("re").compile(r"[஀-௿]")
+
+
+def _auto_voice(text: str, voices: dict) -> str | None:
+    """Pick the best voice for the given raw input text based on language mix."""
+    if not voices:
+        return None
+    latin = len(_LATIN_RE.findall(text))
+    tamil = len(_TAMIL_RE.findall(text))
+    total = latin + tamil or 1
+    latin_ratio = latin / total
+
+    # Mostly English (>70% Latin chars) → english voice
+    # if latin_ratio > 0.7 and "ta_english_natural" in voices:
+    #     return "ta_english_natural"
+    # # Mixed / Tanglish (30-70% Latin) → tanglish voice
+    # if latin_ratio > 0.25 and "ta_tanglish_natural" in voices:
+    #     return "ta_tanglish_natural"
+    # # Mostly Tamil → calm service voice
+    # if "ta_service_calm" in voices:
+    #     return "ta_service_calm"
+    # # Legacy fallback
+    return "ta_female_neutral"
+
 
 @dataclass
 class SynthesisRequest:
     text: str
     voice: str | None = None
     language_hint: str | None = None
+    speed: float | None = None
 
 
 @dataclass
@@ -122,10 +155,10 @@ class TTSPipeline:
             item = await self._synth_queue.get()
             if item is None:
                 break
-            text, voice_name, fut = item
+            text, voice_name, speed, fut = item
             try:
                 audio = await loop.run_in_executor(
-                    None, self.engine.synthesize, text, voice_name
+                    None, self.engine.synthesize, text, voice_name, speed
                 )
                 fut.set_result(audio)
             except Exception as exc:
@@ -133,14 +166,14 @@ class TTSPipeline:
             finally:
                 self._synth_queue.task_done()
 
-    async def _synthesize_queued(self, text: str, voice_name: str | None) -> np.ndarray:
+    async def _synthesize_queued(self, text: str, voice_name: str | None, speed: float | None = None) -> np.ndarray:
         """Submit to the worker queue and await the result."""
         if self._synth_queue is None:
             # Warmup was deferred — load now on first request
             await self.warmup()
         loop = asyncio.get_running_loop()
         fut: asyncio.Future = loop.create_future()
-        await self._synth_queue.put((text, voice_name, fut))
+        await self._synth_queue.put((text, voice_name, speed, fut))
         return await fut
 
     # ── public API ───────────────────────────────────────────────────────────
@@ -165,7 +198,6 @@ class TTSPipeline:
         )
         timings.stage_b_ms = (time.perf_counter() - t1) * 1000
 
-        voice_name = request.voice or None
         # Strip <cs> boundary tokens — they are internal router markers and
         # confuse the acoustic model if passed through as literal text.
         cs_token = getattr(self.router, "cs_token", "<cs>")
@@ -177,18 +209,23 @@ class TTSPipeline:
         # so IndicF5 can pronounce them (it only speaks Tamil script).
         synth_text = transliterate_english_to_tamil(synth_text)
 
-        # AudioCache check (in-memory / Redis — separate from disk phrase cache)
-        cached_pcm = await self.audio_cache.get(synth_text, voice_name or "default", 0)
+        # Auto-select voice based on language mix, unless caller specified one
+        voice_name = request.voice or _auto_voice(norm.text, self.engine.voices)
+
+        # AudioCache check (in-memory / Redis — separate from disk phrase cache).
+        # Key includes real flow steps so a 24→12 change never hits stale audio.
+        steps = int(getattr(self.engine, "num_flow_steps", 12))
+        cached_pcm = await self.audio_cache.get(synth_text, voice_name or "default", steps)
         if cached_pcm:
             timings.cache_hit = True
             audio = np.frombuffer(cached_pcm, dtype="<i2").astype(np.float32) / 32768.0
         else:
             t2 = time.perf_counter()
-            audio = await self._synthesize_queued(synth_text, voice_name)
+            audio = await self._synthesize_queued(synth_text, voice_name, request.speed)
             timings.stage_c_first_chunk_ms = (time.perf_counter() - t2) * 1000
             timings.engine_used = "indicf5"
             asyncio.create_task(
-                self.audio_cache.set(synth_text, voice_name or "default", 0,
+                self.audio_cache.set(synth_text, voice_name or "default", steps,
                                      float_to_pcm16(audio))
             )
 
@@ -202,26 +239,83 @@ class TTSPipeline:
         )
 
     async def stream_pcm_chunks(self, request: SynthesisRequest):
-        """Async generator yielding PCM16 chunks as they arrive.
+        """Async generator yielding PCM16 chunks incrementally (live stream).
 
-        Yields the full audio in one chunk. Streaming still reduces TTFA
-        vs waiting for the full HTTP response.
+        First chunk is emitted after ~one prosodic-chunk synthesis pass
+        (8–14 syllables via IndicF5Engine.synthesize_stream + 20 ms crossfade),
+        so TTFA ≈ one chunk, not the full utterance. Each prosodic chunk is
+        re-sliced to ws_chunk_ms (50 ms → 1200 samples = 2400 B @ 24 kHz).
         """
         loop = asyncio.get_running_loop()
         t0 = time.perf_counter()
 
-        norm = self.normalizer.normalize(request.text)
-        route = self.router.route(norm.text)
+        # Stage A/B off the event loop with the same timeouts as synthesize.
+        # Raises asyncio.TimeoutError → mapped to {"type":"error"} by the WS handler.
+        norm = await asyncio.wait_for(
+            loop.run_in_executor(None, self.normalizer.normalize, request.text),
+            timeout=self.timeout_a,
+        )
+        route = await asyncio.wait_for(
+            loop.run_in_executor(None, self.router.route, norm.text),
+            timeout=self.timeout_b,
+        )
+        # Mandatory text steps — identical to synthesize(): strip internal
+        # <cs> markers and transliterate Latin→Tamil (IndicF5 speaks Tamil script only).
         cs_token = getattr(self.router, "cs_token", "<cs>")
         synth_text = route.normalized_text.replace(cs_token, " ").strip()
         import re as _re
         synth_text = _re.sub(r" {2,}", " ", synth_text)
         synth_text = transliterate_english_to_tamil(synth_text)
-        voice_name = request.voice or None
+        voice_name = request.voice or _auto_voice(norm.text, self.engine.voices)
 
-        audio = await self._synthesize_queued(synth_text, voice_name)
-        logger.info("TTFA %.1f ms | %s", (time.perf_counter() - t0) * 1000, synth_text[:40])
+        # Whole-utterance fast path with REAL steps (never 0 → no stale hits).
+        steps = int(getattr(self.engine, "num_flow_steps", 12))
+        if self.audio_cache is not None:
+            cached_pcm = await self.audio_cache.get(synth_text, voice_name or "default", steps)
+            if cached_pcm:
+                audio = np.frombuffer(cached_pcm, dtype="<i2").astype(np.float32) / 32768.0
+                samples_per_chunk = max(1, self.sample_rate * self.ws_chunk_ms // 1000)
+                for i in range(0, len(audio), samples_per_chunk):
+                    yield float_to_pcm16(audio[i: i + samples_per_chunk])
+                logger.info(
+                    "stream TTFA %.1f ms (cache hit) | %s",
+                    (time.perf_counter() - t0) * 1000, synth_text[:40],
+                )
+                return
 
+        # Incremental path: one DiT pass per prosodic chunk, yielded as ready.
+        gen = self.engine.synthesize_stream(synth_text, voice_name, min_syl=10, max_syl=24, speed=request.speed)
         samples_per_chunk = max(1, self.sample_rate * self.ws_chunk_ms // 1000)
-        for i in range(0, len(audio), samples_per_chunk):
-            yield float_to_pcm16(audio[i: i + samples_per_chunk])
+        first = True
+        bufs: list[np.ndarray] = []
+        try:
+            while True:
+                chunk = await loop.run_in_executor(_stream_executor, lambda: next(gen, None))
+                if chunk is None:
+                    break
+                if len(chunk) == 0:
+                    continue
+                bufs.append(np.asarray(chunk, dtype=np.float32))
+                for i in range(0, len(chunk), samples_per_chunk):
+                    yield float_to_pcm16(chunk[i: i + samples_per_chunk])
+                if first:
+                    logger.info(
+                        "stream TTFA %.1f ms | %s",
+                        (time.perf_counter() - t0) * 1000, synth_text[:40],
+                    )
+                    first = False
+        finally:
+            try:
+                gen.close()
+            except Exception:
+                pass
+            # Cache the whole utterance for future fast-path hits (per-chunk
+            # cache is explicitly OUT of v1). Fire-and-forget like synthesize().
+            if bufs and self.audio_cache is not None:
+                full = np.concatenate(bufs)
+                asyncio.create_task(
+                    self.audio_cache.set(
+                        synth_text, voice_name or "default", steps,
+                        float_to_pcm16(full),
+                    )
+                )

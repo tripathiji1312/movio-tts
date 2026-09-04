@@ -3,239 +3,1510 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movio TTS</title>
+    <title>Movio TTS — Live Streaming Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #07090e;
+            --surface-1: rgba(15, 23, 42, 0.7);
+            --surface-2: rgba(30, 41, 59, 0.55);
+            --surface-border: rgba(255, 255, 255, 0.08);
+            --surface-border-hover: rgba(56, 189, 248, 0.3);
+            --accent-cyan: #06b6d4;
+            --accent-cyan-glow: rgba(6, 182, 212, 0.25);
+            --accent-indigo: #6366f1;
+            --accent-purple: #8b5cf6;
+            --accent-emerald: #10b981;
+            --accent-emerald-glow: rgba(16, 185, 129, 0.25);
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #0f0f0f;
-            color: #e0e0e0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 2rem;
+            padding: 2.5rem 1.5rem;
+            position: relative;
+            overflow-x: hidden;
         }
+
+        /* Ambient glowing background gradients */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -20%;
+            left: 20%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(6, 182, 212, 0.05) 50%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(80px);
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -15%;
+            right: 15%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, rgba(99, 102, 241, 0.04) 50%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(80px);
+        }
+
         .container {
-            max-width: 700px;
+            max-width: 860px;
             width: 100%;
+            position: relative;
+            z-index: 1;
         }
-        h1 {
-            font-size: 1.8rem;
-            font-weight: 600;
-            margin-bottom: 0.3rem;
-            color: #fff;
-        }
-        .subtitle {
-            color: #888;
-            font-size: 0.9rem;
+
+        /* Header section */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             margin-bottom: 2rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid var(--surface-border);
         }
-        .input-group {
-            margin-bottom: 1.5rem;
+
+        .brand-block {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
         }
-        label {
-            display: block;
+
+        .brand-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent-indigo), var(--accent-cyan));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px var(--accent-cyan-glow);
+        }
+
+        .brand-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: #fff;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #ffffff 40%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
             font-size: 0.85rem;
-            color: #aaa;
-            margin-bottom: 0.4rem;
+            color: var(--text-secondary);
+            font-weight: 500;
         }
+
+        .header-pills {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-emerald);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .status-pill.warming {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--accent-amber);
+            border-color: rgba(245, 158, 11, 0.25);
+        }
+
+        .pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+            box-shadow: 0 0 8px currentColor;
+            animation: pulse-animation 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-animation {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.35); opacity: 0.6; }
+        }
+
+        .spec-pill {
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-secondary);
+            border: 1px solid var(--surface-border);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Glassmorphic card container */
+        .card {
+            background: var(--surface-1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+            transition: border-color 0.25s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        /* Studio Input Area */
+        .input-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.6rem;
+        }
+
+        label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-secondary);
+        }
+
+        .char-counter {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
         textarea {
             width: 100%;
-            min-height: 120px;
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 8px;
+            min-height: 100px;
+            background: rgba(8, 12, 22, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-md);
             color: #fff;
-            font-size: 1rem;
-            padding: 0.8rem 1rem;
+            font-size: 1.05rem;
+            line-height: 1.55;
+            padding: 1rem 1.1rem;
             resize: vertical;
             font-family: inherit;
-            transition: border-color 0.2s;
+            transition: all 0.25s ease;
         }
+
         textarea:focus {
             outline: none;
-            border-color: #4a9eff;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px var(--accent-cyan-glow);
+            background: rgba(11, 16, 30, 0.95);
         }
-        .presets {
+
+        /* Presets list */
+        .presets-bar {
+            margin-top: 1rem;
+        }
+
+        .preset-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .presets-grid {
             display: flex;
             flex-wrap: wrap;
             gap: 0.5rem;
-            margin-bottom: 1.5rem;
         }
-        .preset-btn {
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 6px;
-            color: #ccc;
-            padding: 0.4rem 0.8rem;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .preset-btn:hover {
-            border-color: #4a9eff;
-            color: #fff;
-        }
-        .btn-row {
-            display: flex;
-            gap: 0.8rem;
-            margin-bottom: 1.5rem;
-        }
-        button.primary {
-            background: #4a9eff;
-            color: #fff;
-            border: none;
+
+        .preset-chip {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
             border-radius: 8px;
-            padding: 0.7rem 1.5rem;
-            font-size: 1rem;
+            color: #cbd5e1;
+            padding: 0.45rem 0.8rem;
+            font-size: 0.8rem;
             font-weight: 500;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            user-select: none;
         }
-        button.primary:hover { background: #3a8eef; }
-        button.primary:disabled {
-            background: #333;
-            color: #666;
+
+        .preset-chip:hover {
+            background: rgba(6, 182, 212, 0.1);
+            border-color: var(--accent-cyan);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        .preset-chip:active {
+            transform: translateY(0);
+        }
+
+        /* Controls bar */
+        .controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 1.25rem;
+            flex-wrap: wrap;
+        }
+
+        .voice-selector-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .voice-selector-wrap span {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        select {
+            background: rgba(8, 12, 22, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #f8fafc;
+            font-size: 0.85rem;
+            font-family: inherit;
+            font-weight: 500;
+            padding: 0.5rem 0.8rem;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        .action-buttons {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        button.primary-stream-btn {
+            background: linear-gradient(135deg, #0284c7 0%, #06b6d4 50%, #10b981 100%);
+            background-size: 200% auto;
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.6rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(6, 182, 212, 0.35);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        button.primary-stream-btn:hover {
+            background-position: right center;
+            box-shadow: 0 6px 28px rgba(6, 182, 212, 0.5);
+            transform: translateY(-1px);
+        }
+
+        button.primary-stream-btn:active {
+            transform: translateY(0);
+        }
+
+        button.primary-stream-btn:disabled {
+            background: #1e293b;
+            color: #64748b;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        button.secondary-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            border-radius: 10px;
+            padding: 0.75rem 1.25rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        button.secondary-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        button.secondary-btn:disabled {
+            opacity: 0.5;
             cursor: not-allowed;
         }
-        button.secondary {
-            background: transparent;
-            color: #aaa;
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 0.7rem 1.5rem;
-            font-size: 1rem;
+
+        button.stop-btn {
+            background: rgba(244, 63, 94, 0.15);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            color: #fb7185;
+            border-radius: 10px;
+            padding: 0.75rem 1.2rem;
+            font-size: 0.9rem;
+            font-weight: 600;
             cursor: pointer;
+            display: none;
+            align-items: center;
+            gap: 0.4rem;
             transition: all 0.2s;
         }
-        button.secondary:hover { border-color: #666; color: #fff; }
-        .result {
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 1.2rem;
-            margin-bottom: 1rem;
-            display: none;
+
+        button.stop-btn:hover {
+            background: rgba(244, 63, 94, 0.25);
+            color: #fff;
         }
-        .result.show { display: block; }
-        .result audio {
+
+        /* Real-Time Visualizer Canvas & Audio HUD */
+        .visualizer-section {
+            background: rgba(11, 16, 28, 0.8);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .visualizer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.85rem;
+        }
+
+        .visualizer-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .live-mode-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.25rem 0.65rem;
+            border-radius: 9999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .canvas-container {
             width: 100%;
-            margin-bottom: 0.8rem;
+            height: 90px;
+            background: rgba(5, 8, 16, 0.6);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
-        .meta {
-            font-size: 0.8rem;
-            color: #888;
+
+        canvas#audio-visualizer {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Metrics HUD */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.85rem;
+            margin-top: 1.25rem;
+        }
+
+        .metric-card {
+            background: rgba(15, 23, 42, 0.45);
+            border: 1px solid var(--surface-border);
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .metric-card.highlight {
+            border-color: rgba(16, 185, 129, 0.4);
+            background: rgba(16, 185, 129, 0.06);
+        }
+
+        .metric-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.3rem;
+        }
+
+        .metric-value {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: -0.02em;
+        }
+
+        .metric-sub {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 0.2rem;
+        }
+
+        /* Chunk Stream Waterfall Section */
+        .chunk-waterfall-card {
+            background: var(--surface-1);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .section-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+
+        .chunk-count-badge {
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 9999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.15rem 0.55rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Waterfall tiles view */
+        .waterfall-scroll {
+            max-height: 240px;
+            overflow-y: auto;
+            border-radius: var(--radius-md);
+            background: rgba(6, 10, 20, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 0.75rem;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
+
+        .waterfall-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .waterfall-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+
+        .chunks-stream-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 0.6rem;
+        }
+
+        .chunk-tile {
+            background: rgba(30, 41, 59, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            position: relative;
+            transition: all 0.2s ease;
+            animation: chunk-appear 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes chunk-appear {
+            0% { opacity: 0; transform: scale(0.92) translateY(6px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .chunk-tile.playing {
+            background: rgba(6, 182, 212, 0.15);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 16px rgba(6, 182, 212, 0.3);
+        }
+
+        .chunk-tile.played {
+            background: rgba(16, 185, 129, 0.08);
+            border-color: rgba(16, 185, 129, 0.2);
+            opacity: 0.75;
+        }
+
+        .chunk-tile-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chunk-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #cbd5e1;
+        }
+
+        .chunk-status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .chunk-tile.playing .chunk-status-dot {
+            background: var(--accent-cyan);
+            box-shadow: 0 0 8px var(--accent-cyan);
+            animation: pulse-animation 1s infinite;
+        }
+
+        .chunk-tile.played .chunk-status-dot {
+            background: var(--accent-emerald);
+        }
+
+        .chunk-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .chunk-bytes {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .empty-stream-placeholder {
+            padding: 2.5rem 1rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Activity / Log details */
+        .live-log-box {
+            margin-top: 1rem;
+            background: rgba(5, 8, 16, 0.6);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            color: #94a3b8;
+            max-height: 100px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.04);
             line-height: 1.6;
         }
-        .meta span {
-            color: #4a9eff;
-            font-weight: 500;
+
+        .live-log-box .log-row {
+            display: flex;
+            gap: 0.6rem;
         }
-        .status {
-            font-size: 0.85rem;
-            padding: 0.6rem 0;
-            color: #888;
+
+        .live-log-box .log-time {
+            color: var(--accent-cyan);
         }
-        .status.error { color: #ff6b6b; }
-        .status.loading { color: #ffd93d; }
-        .stats-bar {
+
+        /* Replay & Results Section */
+        .result-card {
+            background: var(--surface-1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: none;
+            box-shadow: 0 12px 36px rgba(16, 185, 129, 0.08);
+        }
+
+        .result-card.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .audio-player-wrapper {
+            margin: 1rem 0;
+            background: rgba(8, 12, 22, 0.9);
+            border-radius: 12px;
+            padding: 0.6rem;
+            border: 1px solid var(--surface-border);
+        }
+
+        audio {
+            width: 100%;
+            height: 40px;
+            outline: none;
+        }
+
+        .result-meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 0.8rem;
+        }
+
+        .meta-field label {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .meta-field .val {
+            color: #e2e8f0;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 0.4rem 0.65rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            word-break: break-all;
+        }
+
+        /* Footer stats bar */
+        footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            border-top: 1px solid var(--surface-border);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-stats {
             display: flex;
             gap: 1.5rem;
-            margin-top: 1rem;
-            padding-top: 0.8rem;
-            border-top: 1px solid #222;
-            font-size: 0.8rem;
-            color: #666;
+            flex-wrap: wrap;
         }
-        .stats-bar .stat-val { color: #4a9eff; }
-        @media (max-width: 600px) {
-            body { padding: 1rem; }
-            h1 { font-size: 1.4rem; }
-            .btn-row { flex-direction: column; }
+
+        .footer-stat-item span {
+            color: var(--accent-cyan);
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 1.25rem 0.85rem; }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+            .controls-row { flex-direction: column; align-items: stretch; }
+            .action-buttons { flex-direction: column; width: 100%; }
+            button.primary-stream-btn, button.secondary-btn, button.stop-btn { width: 100%; justify-content: center; }
+            .result-meta-grid { grid-template-columns: 1fr; }
+            header { flex-direction: column; align-items: flex-start; gap: 1rem; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Movio TTS</h1>
-        <p class="subtitle">Tamil / English / Tanglish — VITS + FastSpeech2 cascaded stack</p>
+        <!-- Header -->
+        <header>
+            <div class="brand-block">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1>Movio Live Audio Studio</h1>
+                    <p class="subtitle">IndicF5 Modular Polyglot TTS · Real-time Chunk Streaming</p>
+                </div>
+            </div>
+            <div class="header-pills">
+                <div class="status-pill" id="status-pill">
+                    <span class="pulse-dot"></span>
+                    <span id="status-pill-text">Ready</span>
+                </div>
+                <div class="spec-pill" id="spec-pill">24 kHz · PCM16</div>
+            </div>
+        </header>
 
-        <div class="input-group">
-            <label for="text-input">Text to synthesize</label>
-            <textarea id="text-input" placeholder="Type Tamil, English, or Tanglish text here...">உங்கள் கேப் 5 நிமிடத்தில் வரும்.</textarea>
+        <!-- Main Input Card -->
+        <div class="card">
+            <div class="input-header">
+                <label for="text-input">Prompt Text (Tamil / English / Tanglish)</label>
+                <div class="char-counter" id="char-counter">0 chars</div>
+            </div>
+            <div class="input-wrapper">
+                <textarea id="text-input" placeholder="Type Tamil, English, or Tanglish text here..." spellcheck="false">உங்கள் கேப் 5 நிமிடத்தில் வரும்.</textarea>
+            </div>
+
+            <!-- Smart Presets -->
+            <div class="presets-bar">
+                <div class="preset-title">Transport Domain Quick Presets</div>
+                <div class="presets-grid">
+                    <button class="preset-chip" data-text="உங்கள் கேப் 5 நிமிடத்தில் வரும்.">🚖 Tamil Transport</button>
+                    <button class="preset-chip" data-text="Your OTP is 4832. Please share it with the driver.">🔢 OTP Security</button>
+                    <button class="preset-chip" data-text="Unga booking confirm aayiduchu. Driver name Rajesh.">💬 Tanglish Mix</button>
+                    <button class="preset-chip" data-text="உங்கள் ஓட்டுநர் TN45AB1234 வண்டியில் வருகிறார்.">🚗 Vehicle ID</button>
+                    <button class="preset-chip" data-text="The fare is Rs. 350 for 8.5 km.">💳 Fare & Distance</button>
+                    <button class="preset-chip" data-text="காலை 7:30-க்கு pickup ready-யா இருங்க.">⏰ Time & Schedule</button>
+                </div>
+            </div>
+
+            <!-- Controls Row -->
+            <div class="controls-row">
+                <div class="voice-selector-wrap">
+                    <span>Voice:</span>
+                    <select id="voice-select">
+                        <option value="ta_female_neutral">Tamil Neutral (Female)</option>
+                        <option value="ta_male_neutral">Tamil Neutral (Male)</option>
+                    </select>
+                </div>
+
+                <div class="voice-selector-wrap" style="gap: 0.6rem;">
+                    <span>Pace:</span>
+                    <input type="range" id="speed-slider" min="0.75" max="1.15" step="0.03" value="0.95" style="accent-color: var(--accent-cyan); width: 85px; cursor: pointer;">
+                    <span id="speed-val" style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--accent-cyan); min-width: 100px;">0.95x (Natural)</span>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="secondary-btn" id="tone-btn" onclick="testAudioChime()">
+                        🔊 Test Audio
+                    </button>
+                    <button class="secondary-btn" id="synth-btn" onclick="synthesizeBatch()">
+                        Batch WAV
+                    </button>
+                    <button class="stop-btn" id="stop-btn" onclick="stopLiveStream()">
+                        ⏹ Stop
+                    </button>
+                    <button class="primary-stream-btn" id="stream-btn" onclick="startLiveStream()">
+                        <span>⚡</span>
+                        <span>Start Live Stream</span>
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <div class="presets">
-            <button class="preset-btn" data-text="உங்கள் கேப் 5 நிமிடத்தில் வரும்.">Tamil</button>
-            <button class="preset-btn" data-text="Your OTP is 4832. Please share it with the driver.">English</button>
-            <button class="preset-btn" data-text="Unga booking confirm aayiduchu. Driver name Rajesh.">Tanglish</button>
-            <button class="preset-btn" data-text="உங்கள் ஓட்டுநர் TN45AB1234 வண்டியில் வருகிறார்.">Vehicle ID</button>
-            <button class="preset-btn" data-text="The fare is Rs. 350 for 8.5 km.">Fare</button>
-            <button class="preset-btn" data-text="காலை 7:30-க்கு pickup ready-யா இருங்க.">Time</button>
+        <!-- Real-Time Audio Visualizer & HUD -->
+        <div class="visualizer-section">
+            <div class="visualizer-header">
+                <div class="visualizer-title">
+                    <span>Live Audio Visualizer</span>
+                </div>
+                <div class="live-mode-badge" id="live-mode-badge">
+                    <span class="pulse-dot" style="background:#06b6d4;"></span>
+                    <span id="live-mode-text">Stream Idle</span>
+                </div>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="audio-visualizer"></canvas>
+            </div>
+
+            <!-- Metrics HUD -->
+            <div class="metrics-grid">
+                <div class="metric-card" id="card-ttfa">
+                    <div class="metric-label">Time to First Audio (TTFA)</div>
+                    <div class="metric-value" id="val-ttfa">—</div>
+                    <div class="metric-sub" id="sub-ttfa">First chunk latency</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Live Stream Timer</div>
+                    <div class="metric-value" id="val-elapsed">0.0s</div>
+                    <div class="metric-sub">Elapsed streaming</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Chunks Received</div>
+                    <div class="metric-value" id="val-chunks">0</div>
+                    <div class="metric-sub" id="val-bytes">0 KB total</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Audio Buffer State</div>
+                    <div class="metric-value" id="val-buffer">0.0s</div>
+                    <div class="metric-sub" id="sub-buffer">Ready for playback</div>
+                </div>
+            </div>
         </div>
 
-        <div class="btn-row">
-            <button class="primary" id="synth-btn" onclick="synthesize()">Synthesize</button>
-            <button class="secondary" id="stream-btn" onclick="streamAudio()">Stream (WebSocket)</button>
+        <!-- Live Chunk Stream Waterfall -->
+        <div class="chunk-waterfall-card">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <div class="section-title">Live Chunk Stream Inspector</div>
+                    <span class="chunk-count-badge" id="waterfall-badge">0 Chunks</span>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">50ms / 2400 B frames</div>
+            </div>
+
+            <div class="waterfall-scroll" id="waterfall-scroll">
+                <div class="chunks-stream-grid" id="chunks-grid">
+                    <div class="empty-stream-placeholder" id="empty-placeholder">
+                        <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.757 3.63 8.25 4.51 8.25H6.75z"/>
+                        </svg>
+                        <span>Start streaming to inspect incremental 50ms audio chunks in real time</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-time pipeline log -->
+            <div class="live-log-box" id="live-log-box">
+                <div class="log-row"><span class="log-time">[0.0s]</span> <span>Studio ready. Click "Start Live Stream" to begin.</span></div>
+            </div>
         </div>
 
-        <div class="status" id="status"></div>
+        <!-- Completed Audio / Replay Console -->
+        <div class="result-card" id="result-card">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <div class="section-title" style="color:var(--accent-emerald);">✓ Stream Completed & Mastered</div>
+                </div>
+                <button class="secondary-btn" style="padding:0.35rem 0.75rem; font-size:0.8rem;" onclick="downloadWav()">
+                    💾 Download WAV
+                </button>
+            </div>
 
-        <div class="result" id="result">
-            <audio id="audio-player" controls></audio>
-            <div class="meta" id="meta"></div>
+            <div class="audio-player-wrapper">
+                <audio id="audio-player" controls></audio>
+            </div>
+
+            <div class="result-meta-grid">
+                <div class="meta-field">
+                    <label>Stage A: Text Normalization</label>
+                    <div class="val" id="meta-norm">—</div>
+                </div>
+                <div class="meta-field">
+                    <label>Stage B: Tamil Transliteration (Phonetic)</label>
+                    <div class="val" id="meta-trans">—</div>
+                </div>
+                <div class="meta-field">
+                    <label>Pipeline Stage Timings</label>
+                    <div class="val" id="meta-timings">—</div>
+                </div>
+                <div class="meta-field">
+                    <label>Stream Summary</label>
+                    <div class="val" id="meta-summary">—</div>
+                </div>
+            </div>
         </div>
 
-        <div class="stats-bar">
-            <div>Engine: <span class="stat-val" id="stat-engine">—</span></div>
-            <div>VITS: <span class="stat-val" id="stat-vits">—</span></div>
-            <div>FS2: <span class="stat-val" id="stat-fs2">—</span></div>
-        </div>
+        <!-- Footer Stats Bar -->
+        <footer>
+            <div class="footer-stats">
+                <div class="footer-stat-item">Engine: <span id="stat-engine">IndicF5 (337M)</span></div>
+                <div class="footer-stat-item">Native Rate: <span id="stat-rate">24 kHz</span></div>
+                <div class="footer-stat-item">Flow Steps: <span id="stat-steps">12x Euler</span></div>
+                <div class="footer-stat-item">Device: <span id="stat-device">CPU</span></div>
+            </div>
+            <div>Movio TTS v0.5 · Zero-Shot Audio Streaming</div>
+        </footer>
     </div>
 
     <script>
+        // DOM Elements
         const textarea = document.getElementById('text-input');
-        const status = document.getElementById('status');
-        const result = document.getElementById('result');
-        const audioPlayer = document.getElementById('audio-player');
-        const meta = document.getElementById('meta');
+        const charCounter = document.getElementById('char-counter');
+        const streamBtn = document.getElementById('stream-btn');
         const synthBtn = document.getElementById('synth-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const voiceSelect = document.getElementById('voice-select');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedVal = document.getElementById('speed-val');
+        const statusPill = document.getElementById('status-pill');
+        const statusPillText = document.getElementById('status-pill-text');
+        const liveModeBadge = document.getElementById('live-mode-badge');
+        const liveModeText = document.getElementById('live-mode-text');
+        const canvas = document.getElementById('audio-visualizer');
+        const ctxCanvas = canvas.getContext('2d');
 
-        // Presets
-        document.querySelectorAll('.preset-btn').forEach(btn => {
+        const valTtfa = document.getElementById('val-ttfa');
+        const subTtfa = document.getElementById('sub-ttfa');
+        const cardTtfa = document.getElementById('card-ttfa');
+        const valElapsed = document.getElementById('val-elapsed');
+        const valChunks = document.getElementById('val-chunks');
+        const valBytes = document.getElementById('val-bytes');
+        const valBuffer = document.getElementById('val-buffer');
+        const subBuffer = document.getElementById('sub-buffer');
+        const waterfallBadge = document.getElementById('waterfall-badge');
+        const chunksGrid = document.getElementById('chunks-grid');
+        const emptyPlaceholder = document.getElementById('empty-placeholder');
+        const liveLogBox = document.getElementById('live-log-box');
+        const resultCard = document.getElementById('result-card');
+        const audioPlayer = document.getElementById('audio-player');
+
+        // Dynamic Pace Slider Label
+        speedSlider.addEventListener('input', () => {
+            const v = parseFloat(speedSlider.value);
+            let desc = 'Calm';
+            if (v <= 0.80) desc = 'Very Calm';
+            else if (v <= 0.90) desc = 'Calm';
+            else if (v <= 1.02) desc = 'Natural';
+            else desc = 'Brisk';
+            speedVal.textContent = `${v.toFixed(2)}x (${desc})`;
+        });
+
+        // Streaming State
+        let activeWs = null;
+        let isStreaming = false;
+        let streamStartTime = 0;
+        let elapsedTimerInterval = null;
+        let sampleRate = 24000;
+        let receivedChunkBlobs = [];
+        let chunkElements = [];
+        let fullWavBlob = null;
+
+        // Web Audio API State
+        let audioCtx = null;
+        let analyser = null;
+        let scheduledEndTime = 0;
+        let totalScheduledDuration = 0;
+        let isPlayingAudio = false;
+
+        // Character counter
+        function updateCharCount() {
+            const len = textarea.value.length;
+            charCounter.textContent = `${len} chars`;
+        }
+        textarea.addEventListener('input', updateCharCount);
+        updateCharCount();
+
+        // Presets Click Handler
+        document.querySelectorAll('.preset-chip').forEach(btn => {
             btn.addEventListener('click', () => {
                 textarea.value = btn.dataset.text;
+                updateCharCount();
+                textarea.focus();
             });
         });
 
-        // Fetch engine stats
-        async function fetchStats() {
+        // Fetch engine stats & populate voice options
+        async function fetchEngineStats() {
             try {
-                const r = await fetch('/engine/stats');
-                const d = await r.json();
-                document.getElementById('stat-engine').textContent = 'Cascaded';
-                document.getElementById('stat-vits').textContent = d.vits_ready ? 'Ready' : 'Off';
-                document.getElementById('stat-fs2').textContent = d.fs2_ready ? 'Ready' : 'Off';
-            } catch(e) {}
+                const [rStats, rVoices] = await Promise.all([
+                    fetch('/engine/stats'),
+                    fetch('/voices')
+                ]);
+                if (rStats.ok) {
+                    const d = await rStats.json();
+                    document.getElementById('stat-engine').textContent = d.engine ? d.engine.toUpperCase() : 'IndicF5';
+                    if (d.sample_rate) {
+                        sampleRate = d.sample_rate;
+                        document.getElementById('stat-rate').textContent = (d.sample_rate / 1000) + ' kHz';
+                        document.getElementById('spec-pill').textContent = (d.sample_rate / 1000) + ' kHz · PCM16';
+                    }
+                    if (d.flow_steps) {
+                        document.getElementById('stat-steps').textContent = `${d.flow_steps}x ${d.ode_method || 'Euler'}`;
+                    }
+                    if (d.device) {
+                        document.getElementById('stat-device').textContent = d.device.toUpperCase();
+                    }
+                    if (d.is_ready) {
+                        statusPill.className = 'status-pill';
+                        statusPillText.textContent = 'Ready';
+                    }
+                }
+                if (rVoices.ok) {
+                    const vd = await rVoices.json();
+                    if (vd.voices && vd.voices.length > 0 && vd.voices[0] !== 'default') {
+                        voiceSelect.innerHTML = '';
+                        vd.voices.forEach(v => {
+                            const opt = document.createElement('option');
+                            opt.value = v;
+                            if (v === 'ta_female_neutral') {
+                                opt.textContent = 'Tamil Neutral (Female)';
+                                opt.selected = true;
+                            } else if (v === 'ta_male_neutral') {
+                                opt.textContent = 'Tamil Neutral (Male)';
+                            } else {
+                                let label = v.replace('ta_', '').replace(/_/g, ' ');
+                                opt.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+                            }
+                            voiceSelect.appendChild(opt);
+                        });
+                    }
+                }
+            } catch(e) {
+                console.warn('Could not fetch server stats', e);
+            }
         }
-        fetchStats();
+        fetchEngineStats();
 
-        async function synthesize() {
+        // Ensure AudioContext is initialized & active
+        function initAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContextClass({ sampleRate: sampleRate });
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 128;
+                analyser.smoothingTimeConstant = 0.8;
+                analyser.connect(audioCtx.destination);
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        // Live Log Helper
+        function logEvent(message) {
+            const elapsed = ((performance.now() - (streamStartTime || performance.now())) / 1000).toFixed(1);
+            const row = document.createElement('div');
+            row.className = 'log-row';
+            row.innerHTML = `<span class="log-time">[${elapsed}s]</span> <span>${message}</span>`;
+            liveLogBox.appendChild(row);
+            liveLogBox.scrollTop = liveLogBox.scrollHeight;
+        }
+
+        // ═════════════════════════════════════════════════════════════════════
+        // Real-Time Audio Visualizer (HTML5 Canvas)
+        // ═════════════════════════════════════════════════════════════════════
+        function setupVisualizer() {
+            function resize() {
+                canvas.width = canvas.parentElement.clientWidth * window.devicePixelRatio;
+                canvas.height = canvas.parentElement.clientHeight * window.devicePixelRatio;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            let phase = 0;
+            function render() {
+                requestAnimationFrame(render);
+                const w = canvas.width;
+                const h = canvas.height;
+                ctxCanvas.clearRect(0, 0, w, h);
+
+                if (analyser && isPlayingAudio) {
+                    // Render real-time dynamic frequency bars & wave
+                    const bufferLength = analyser.frequencyBinCount;
+                    const dataArray = new Uint8Array(bufferLength);
+                    analyser.getByteFrequencyData(dataArray);
+
+                    const barWidth = (w / bufferLength) * 2.2;
+                    let x = 0;
+
+                    for (let i = 0; i < bufferLength; i++) {
+                        const barHeight = (dataArray[i] / 255) * h * 0.88;
+                        const grad = ctxCanvas.createLinearGradient(0, h, 0, h - barHeight);
+                        grad.addColorStop(0, 'rgba(6, 182, 212, 0.2)');
+                        grad.addColorStop(0.5, 'rgba(99, 102, 241, 0.7)');
+                        grad.addColorStop(1, 'rgba(16, 185, 129, 0.95)');
+
+                        ctxCanvas.fillStyle = grad;
+                        ctxCanvas.fillRect(x, h - barHeight, barWidth - 2, barHeight);
+                        x += barWidth;
+                    }
+                } else {
+                    // Idle breathing wave
+                    phase += 0.04;
+                    ctxCanvas.beginPath();
+                    ctxCanvas.lineWidth = 2.5 * window.devicePixelRatio;
+                    const grad = ctxCanvas.createLinearGradient(0, 0, w, 0);
+                    grad.addColorStop(0, 'rgba(6, 182, 212, 0.1)');
+                    grad.addColorStop(0.5, 'rgba(99, 102, 241, 0.6)');
+                    grad.addColorStop(1, 'rgba(16, 185, 129, 0.1)');
+                    ctxCanvas.strokeStyle = grad;
+
+                    const mid = h / 2;
+                    ctxCanvas.moveTo(0, mid);
+                    for (let x = 0; x < w; x += 5) {
+                        const y = mid + Math.sin(x * 0.015 + phase) * (isStreaming ? 14 : 6);
+                        ctxCanvas.lineTo(x, y);
+                    }
+                    ctxCanvas.stroke();
+                }
+            }
+            render();
+        }
+        setupVisualizer();
+
+        // ═════════════════════════════════════════════════════════════════════
+        // Live Streaming WebSocket Engine
+        // ═════════════════════════════════════════════════════════════════════
+        async function startLiveStream() {
+            const text = textarea.value.trim();
+            if (!text) return;
+
+            initAudioContext();
+            isStreaming = true;
+            streamStartTime = performance.now();
+            receivedChunkBlobs = [];
+            chunkElements = [];
+            fullWavBlob = null;
+            scheduledEndTime = 0;
+            totalScheduledDuration = 0;
+            isPlayingAudio = false;
+
+            // UI Reset
+            streamBtn.disabled = true;
+            synthBtn.disabled = true;
+            stopBtn.style.display = 'inline-flex';
+            resultCard.classList.remove('show');
+            emptyPlaceholder.style.display = 'none';
+            chunksGrid.innerHTML = '';
+            liveLogBox.innerHTML = '';
+            cardTtfa.classList.remove('highlight');
+            valTtfa.textContent = 'Measuring...';
+            valChunks.textContent = '0';
+            valBytes.textContent = '0 KB total';
+            valBuffer.textContent = '0.0s';
+            waterfallBadge.textContent = '0 Chunks';
+
+            statusPill.className = 'status-pill warming';
+            statusPillText.textContent = 'Connecting...';
+            liveModeBadge.className = 'live-mode-badge';
+            liveModeText.textContent = 'Connecting...';
+
+            logEvent('Opening WebSocket connection...');
+
+            // Start elapsed timer
+            if (elapsedTimerInterval) clearInterval(elapsedTimerInterval);
+            elapsedTimerInterval = setInterval(() => {
+                const nowSec = ((performance.now() - streamStartTime) / 1000).toFixed(1);
+                valElapsed.textContent = `${nowSec}s`;
+
+                // Update buffer health
+                if (audioCtx && scheduledEndTime > 0) {
+                    const remainingBuffer = Math.max(0, scheduledEndTime - audioCtx.currentTime);
+                    valBuffer.textContent = `${remainingBuffer.toFixed(2)}s`;
+                    subBuffer.textContent = remainingBuffer > 0 ? 'Buffered ahead' : 'Idle';
+                    isPlayingAudio = remainingBuffer > 0.02;
+                }
+            }, 50);
+
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${location.host}/tts/stream`;
+            const ws = new WebSocket(wsUrl);
+            ws.binaryType = 'blob';
+            activeWs = ws;
+
+            let ttfaRecorded = false;
+            let chunkIndex = 0;
+            let totalBytes = 0;
+
+            ws.onopen = () => {
+                logEvent(`Connected! Sending prompt: "${text.slice(0, 45)}..."`);
+                statusPill.className = 'status-pill';
+                statusPillText.textContent = 'Streaming';
+                liveModeText.textContent = 'Streaming Live';
+                ws.send(JSON.stringify({
+                    text: text,
+                    voice: voiceSelect.value,
+                    speed: parseFloat(speedSlider.value)
+                }));
+            };
+
+            ws.onmessage = async (event) => {
+                if (event.data instanceof Blob) {
+                    // ── BINARY AUDIO FRAME (50ms PCM16) ─────────────────────────
+                    chunkIndex++;
+                    const chunkArrivalMs = (performance.now() - streamStartTime).toFixed(0);
+
+                    // Record TTFA on first chunk
+                    if (!ttfaRecorded) {
+                        ttfaRecorded = true;
+                        valTtfa.textContent = `${chunkArrivalMs} ms`;
+                        subTtfa.textContent = '✓ TTFA Confirmed';
+                        cardTtfa.classList.add('highlight');
+                        logEvent(`⚡ FIRST AUDIO CHUNK ARRIVED: TTFA ${chunkArrivalMs} ms`);
+                    }
+
+                    receivedChunkBlobs.push(event.data);
+                    totalBytes += event.data.size;
+                    valChunks.textContent = chunkIndex;
+                    valBytes.textContent = `${(totalBytes / 1024).toFixed(1)} KB total`;
+                    waterfallBadge.textContent = `${chunkIndex} Chunks`;
+
+                    // Create waterfall card for this chunk
+                    const tile = createChunkTile(chunkIndex, chunkArrivalMs, event.data.size);
+                    chunksGrid.appendChild(tile);
+                    chunkElements.push(tile);
+                    const scrollContainer = document.getElementById('waterfall-scroll');
+                    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+
+                    // Decode and schedule chunk for seamless live playback
+                    const arrayBuffer = await event.data.arrayBuffer();
+                    schedulePcmChunk(arrayBuffer, chunkIndex - 1);
+
+                } else {
+                    // ── JSON CONTROL MESSAGE ────────────────────────────────────
+                    try {
+                        const msg = JSON.parse(event.data);
+                        if (msg.type === 'start') {
+                            logEvent('Server acknowledged synthesis request');
+                        } else if (msg.type === 'progress') {
+                            logEvent(`[${msg.phase || 'Info'}] ${msg.message}`);
+                        } else if (msg.type === 'end') {
+                            const totalMs = (performance.now() - streamStartTime).toFixed(0);
+                            logEvent(`✓ Stream completed: ${msg.chunks || chunkIndex} chunks, total ${totalMs} ms`);
+                            finishStream(totalMs, chunkIndex);
+                            ws.close();
+                        } else if (msg.type === 'error') {
+                            logEvent(`❌ Server error: ${msg.message}`);
+                            handleStreamError(msg.message);
+                            ws.close();
+                        }
+                    } catch(err) {
+                        console.error('Error parsing JSON from WS', err);
+                    }
+                }
+            };
+
+            ws.onerror = (err) => {
+                logEvent('WebSocket connection error');
+                handleStreamError('Connection error');
+            };
+
+            ws.onclose = () => {
+                activeWs = null;
+                if (isStreaming) {
+                    finishStream(((performance.now() - streamStartTime)).toFixed(0), chunkIndex);
+                }
+            };
+        }
+
+        // ═════════════════════════════════════════════════════════════════════
+        // Web Audio PCM16 Scheduling & Gapless Playback Engine
+        // ═════════════════════════════════════════════════════════════════════
+        function schedulePcmChunk(arrayBuffer, tileIndex) {
+            if (!audioCtx) return;
+
+            const int16 = new Int16Array(arrayBuffer);
+            const float32 = new Float32Array(int16.length);
+            for (let i = 0; i < int16.length; i++) {
+                float32[i] = int16[i] / 32768.0;
+            }
+
+            const audioBuffer = audioCtx.createBuffer(1, float32.length, sampleRate);
+            audioBuffer.getChannelData(0).set(float32);
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(analyser);
+
+            const chunkDuration = float32.length / sampleRate;
+            const now = audioCtx.currentTime;
+
+            // Safe scheduling: start immediately with 25ms buffer if starting fresh
+            if (scheduledEndTime < now) {
+                scheduledEndTime = now + 0.025;
+            }
+
+            const playTime = scheduledEndTime;
+            source.start(playTime);
+            scheduledEndTime += chunkDuration;
+            totalScheduledDuration += chunkDuration;
+            isPlayingAudio = true;
+
+            // Synchronize chunk card visual highlight with audio playback
+            const delayUntilPlay = Math.max(0, (playTime - now) * 1000);
+            setTimeout(() => {
+                if (chunkElements[tileIndex]) {
+                    chunkElements[tileIndex].classList.add('playing');
+                }
+            }, delayUntilPlay);
+
+            setTimeout(() => {
+                if (chunkElements[tileIndex]) {
+                    chunkElements[tileIndex].classList.remove('playing');
+                    chunkElements[tileIndex].classList.add('played');
+                }
+            }, delayUntilPlay + (chunkDuration * 1000));
+        }
+
+        // Create sleek chunk tile DOM element
+        function createChunkTile(index, arrivalMs, bytes) {
+            const div = document.createElement('div');
+            div.className = 'chunk-tile';
+            div.id = `chunk-tile-${index}`;
+            div.innerHTML = `
+                <div class="chunk-tile-header">
+                    <span class="chunk-id">#${String(index).padStart(2, '0')}</span>
+                    <span class="chunk-status-dot"></span>
+                </div>
+                <div class="chunk-time">+${arrivalMs}ms</div>
+                <div class="chunk-bytes">
+                    <span>${bytes} B</span>
+                    <span>50ms</span>
+                </div>
+            `;
+            return div;
+        }
+
+        // Stop current live stream
+        function stopLiveStream() {
+            if (activeWs) {
+                logEvent('Stopping stream by user request...');
+                activeWs.close();
+                activeWs = null;
+            }
+            if (audioCtx) {
+                try { audioCtx.suspend(); } catch(e) {}
+            }
+            finishStream(((performance.now() - streamStartTime)).toFixed(0), chunkElements.length);
+        }
+
+        // Handle completion of stream
+        async function finishStream(totalMs, chunkCount) {
+            isStreaming = false;
+            streamBtn.disabled = false;
+            synthBtn.disabled = false;
+            stopBtn.style.display = 'none';
+            if (elapsedTimerInterval) clearInterval(elapsedTimerInterval);
+
+            statusPill.className = 'status-pill';
+            statusPillText.textContent = 'Completed';
+            liveModeText.textContent = 'Playback Ready';
+
+            // Construct full WAV from all chunks for master replay/download
+            if (receivedChunkBlobs.length > 0) {
+                const combinedBlob = new Blob(receivedChunkBlobs, { type: 'audio/pcm' });
+                const buf = await combinedBlob.arrayBuffer();
+                fullWavBlob = pcm16ToWav(new Int16Array(buf), sampleRate);
+                audioPlayer.src = URL.createObjectURL(fullWavBlob);
+
+                // Show completed result card with metadata
+                document.getElementById('meta-norm').textContent = textarea.value.trim();
+                document.getElementById('meta-trans').textContent = 'Tamil script normalized & phonetically mapped';
+                document.getElementById('meta-timings').textContent = `Total: ${totalMs} ms | Chunks: ${chunkCount}`;
+                document.getElementById('meta-summary').textContent = `${(totalBytes / 1024).toFixed(1)} KB | 24,000 Hz 16-bit Mono`;
+                resultCard.classList.add('show');
+            }
+        }
+
+        function handleStreamError(msg) {
+            isStreaming = false;
+            streamBtn.disabled = false;
+            synthBtn.disabled = false;
+            stopBtn.style.display = 'none';
+            if (elapsedTimerInterval) clearInterval(elapsedTimerInterval);
+            statusPill.className = 'status-pill warming';
+            statusPillText.textContent = 'Error';
+            liveModeText.textContent = 'Stream Error';
+        }
+
+        // ═════════════════════════════════════════════════════════════════════
+        // Full Batch WAV Synthesis (POST /tts)
+        // ═════════════════════════════════════════════════════════════════════
+        async function synthesizeBatch() {
             const text = textarea.value.trim();
             if (!text) return;
 
             synthBtn.disabled = true;
-            status.className = 'status loading';
-            status.textContent = 'Synthesizing...';
-            result.classList.remove('show');
+            streamBtn.disabled = true;
+            statusPill.className = 'status-pill warming';
+            statusPillText.textContent = 'Synthesizing...';
+            liveLogBox.innerHTML = '';
+            logEvent('Sending batch synthesis request...');
 
             const t0 = performance.now();
             try {
                 const resp = await fetch('/tts', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({text})
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: text,
+                        voice: voiceSelect.value,
+                        speed: parseFloat(speedSlider.value)
+                    })
                 });
                 if (!resp.ok) {
                     const err = await resp.json();
@@ -244,134 +1515,110 @@
                 const data = await resp.json();
                 const elapsed = (performance.now() - t0).toFixed(0);
 
-                // Play audio
                 const audioBytes = atob(data.audio_wav_base64);
                 const audioArray = new Uint8Array(audioBytes.length);
                 for (let i = 0; i < audioBytes.length; i++) {
                     audioArray[i] = audioBytes.charCodeAt(i);
                 }
-                const blob = new Blob([audioArray], {type: 'audio/wav'});
-                audioPlayer.src = URL.createObjectURL(blob);
+                fullWavBlob = new Blob([audioArray], { type: 'audio/wav' });
+                audioPlayer.src = URL.createObjectURL(fullWavBlob);
                 audioPlayer.play();
 
-                // Show metadata
-                meta.innerHTML = `
-                    <div>Normalized: <span>${data.normalized_text}</span></div>
-                    <div>Stage A: <span>${data.timings.stage_a_ms}ms</span> |
-                         Stage B: <span>${data.timings.stage_b_ms}ms</span> |
-                         Stage C: <span>${data.timings.stage_c_first_chunk_ms}ms</span></div>
-                    <div>Total (server): <span>${data.timings.total_ms}ms</span> |
-                         Total (e2e): <span>${elapsed}ms</span> |
-                         Cache: <span>${data.timings.cache_hit ? 'HIT' : 'MISS'}</span></div>
-                `;
-                result.classList.add('show');
-                status.className = 'status';
-                status.textContent = '';
-                fetchStats();
+                document.getElementById('meta-norm').textContent = data.normalized_text || text;
+                document.getElementById('meta-trans').textContent = data.routed_text || '—';
+                document.getElementById('meta-timings').textContent = `Stage A: ${data.timings.stage_a_ms}ms | Stage B: ${data.timings.stage_b_ms}ms | Stage C: ${data.timings.stage_c_first_chunk_ms}ms`;
+                document.getElementById('meta-summary').textContent = `Server: ${data.timings.total_ms}ms | E2E: ${elapsed}ms | Cache: ${data.timings.cache_hit ? 'HIT' : 'MISS'}`;
+                resultCard.classList.add('show');
+
+                statusPill.className = 'status-pill';
+                statusPillText.textContent = 'Completed';
+                logEvent(`Batch complete in ${elapsed} ms. Playing audio.`);
             } catch(e) {
-                status.className = 'status error';
-                status.textContent = 'Error: ' + e.message;
+                logEvent(`Error in batch synthesis: ${e.message}`);
+                statusPill.className = 'status-pill warming';
+                statusPillText.textContent = 'Error';
             }
             synthBtn.disabled = false;
+            streamBtn.disabled = false;
         }
 
-        async function streamAudio() {
-            const text = textarea.value.trim();
-            if (!text) return;
+        // ═════════════════════════════════════════════════════════════════════
+        // Audio Chime & WAV Utilities
+        // ═════════════════════════════════════════════════════════════════════
+        function testAudioChime() {
+            initAudioContext();
+            const now = audioCtx.currentTime;
 
-            status.className = 'status loading';
-            status.textContent = 'Streaming...';
-            result.classList.remove('show');
+            // Harmonious two-tone chime (523.25 Hz C5 + 659.25 Hz E5)
+            [523.25, 659.25, 783.99].forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.08);
 
-            const wsUrl = `ws://${location.host}/tts/stream`;
-            const ws = new WebSocket(wsUrl);
-            const chunks = [];
-            let ttfa = null;
-            const t0 = performance.now();
+                gain.gain.setValueAtTime(0, now + idx * 0.08);
+                gain.gain.linearRampToValueAtTime(0.2, now + idx * 0.08 + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.4);
 
-            ws.onopen = () => {
-                ws.send(JSON.stringify({text}));
-            };
-
-            ws.onmessage = (event) => {
-                if (event.data instanceof Blob) {
-                    if (ttfa === null) ttfa = (performance.now() - t0).toFixed(0);
-                    chunks.push(event.data);
-                } else {
-                    const msg = JSON.parse(event.data);
-                    if (msg.type === 'end') {
-                        const totalMs = (performance.now() - t0).toFixed(0);
-                        const blob = new Blob(chunks, {type: 'audio/pcm'});
-                        // Convert PCM16 to WAV for playback
-                        blob.arrayBuffer().then(buf => {
-                            const wav = pcm16ToWav(new Int16Array(buf), 22050);
-                            audioPlayer.src = URL.createObjectURL(wav);
-                            audioPlayer.play();
-                        });
-                        meta.innerHTML = `
-                            <div>TTFA: <span>${ttfa}ms</span> | Total: <span>${totalMs}ms</span> | Chunks: <span>${chunks.length}</span></div>
-                        `;
-                        result.classList.add('show');
-                        status.className = 'status';
-                        status.textContent = '';
-                        ws.close();
-                    } else if (msg.type === 'error') {
-                        status.className = 'status error';
-                        status.textContent = 'Error: ' + msg.message;
-                        ws.close();
-                    }
-                }
-            };
-
-            ws.onerror = () => {
-                status.className = 'status error';
-                status.textContent = 'WebSocket connection failed';
-            };
+                osc.connect(gain);
+                gain.connect(analyser);
+                osc.start(now + idx * 0.08);
+                osc.stop(now + idx * 0.08 + 0.45);
+            });
+            isPlayingAudio = true;
+            setTimeout(() => { isPlayingAudio = false; }, 600);
+            logEvent('Test chime played — audio output is functional');
         }
 
-        function pcm16ToWav(samples, sampleRate) {
+        function downloadWav() {
+            if (!fullWavBlob) return;
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(fullWavBlob);
+            a.download = `movio_${Date.now()}.wav`;
+            a.click();
+        }
+
+        function pcm16ToWav(samples, rate) {
             const numChannels = 1;
             const bitsPerSample = 16;
-            const byteRate = sampleRate * numChannels * bitsPerSample / 8;
+            const byteRate = rate * numChannels * bitsPerSample / 8;
             const blockAlign = numChannels * bitsPerSample / 8;
             const dataSize = samples.length * 2;
             const buffer = new ArrayBuffer(44 + dataSize);
             const view = new DataView(buffer);
 
-            // WAV header
-            writeString(view, 0, 'RIFF');
+            writeStr(view, 0, 'RIFF');
             view.setUint32(4, 36 + dataSize, true);
-            writeString(view, 8, 'WAVE');
-            writeString(view, 12, 'fmt ');
+            writeStr(view, 8, 'WAVE');
+            writeStr(view, 12, 'fmt ');
             view.setUint32(16, 16, true);
             view.setUint16(20, 1, true);
             view.setUint16(22, numChannels, true);
-            view.setUint32(24, sampleRate, true);
+            view.setUint32(24, rate, true);
             view.setUint32(28, byteRate, true);
             view.setUint16(32, blockAlign, true);
             view.setUint16(34, bitsPerSample, true);
-            writeString(view, 36, 'data');
+            writeStr(view, 36, 'data');
             view.setUint32(40, dataSize, true);
 
-            // PCM data
             const offset = 44;
             for (let i = 0; i < samples.length; i++) {
                 view.setInt16(offset + i * 2, samples[i], true);
             }
-            return new Blob([buffer], {type: 'audio/wav'});
+            return new Blob([buffer], { type: 'audio/wav' });
         }
 
-        function writeString(view, offset, str) {
+        function writeStr(view, offset, str) {
             for (let i = 0; i < str.length; i++) {
                 view.setUint8(offset + i, str.charCodeAt(i));
             }
         }
 
-        // Enter key to synthesize
+        // Keyboard Shortcut: Ctrl + Enter to Stream
         textarea.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && e.ctrlKey) {
                 e.preventDefault();
-                synthesize();
+                startLiveStream();
             }
         });
     </script>

@@ -1,133 +1,74 @@
 """English/Romanized-Tamil → Tamil script preprocessing for IndicF5.
 
-Pipeline (priority order):
-  1. Curated lexicon — common transport/English words with natural Tamil loanword forms
-  2. IndicXlit — trained on 26M real Roman→Tamil pairs, produces natural orthography
-  3. g2p-en ARPAbet fallback — only for truly unknown words IndicXlit can't handle
-
-Why this matters: IndicF5 was trained on natural Tamil orthography. Phonetic
-reconstructions from g2p look foreign to the model → robotic prosody.
-Natural loanword forms (கேப் not காப்பு) match training data → natural output.
+Three-tier fully local pipeline (zero network calls):
+  1. Override dict — function words + common loanwords where phonetic mapping fails
+  2. CMU Dict + ARPAbet→Tamil — 123K English words, <0.1ms/word
+  3. IndicXlit via CTranslate2 — Indian names, Tanglish, unknown words, ~1ms/word
 """
 
 from __future__ import annotations
 import re
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# ── Curated lexicon: common English words with natural Tamil loanword forms ──
-# These are the forms Tamil speakers actually write — matching IndicF5 training data.
+# ── Tier 1: Override dictionary ──────────────────────────────────────────────
+# Function words where phonetic mapping gives unnatural results, plus a few
+# high-frequency loanwords with conventional Tamil spellings.
 
-_LEXICON: dict[str, str] = {
-    # Transport domain
-    "cab": "கேப்",
-    "taxi": "டாக்சி",
-    "auto": "ஆட்டோ",
-    "bus": "பஸ்",
-    "train": "ட்ரெயின்",
-    "flight": "ஃப்ளைட்",
-    "bike": "பைக்",
-    "car": "கார்",
-    "pickup": "பிக்கப்",
-    "drop": "ட்ராப்",
-    "driver": "டிரைவர்",
-    "for": "ஃபார்",
-    "from": "ஃப்ரம்",
-    "your": "யுவர்",
-    "you": "யூ",
-    "with": "வித்",
-    "the": "த",
-    "is": "இஸ்",
-    "it": "இட்",
-    "booking": "புக்கிங்",
-    "book": "புக்",
-    "booked": "புக்ட்",
-    "cancel": "கேன்சல்",
-    "cancelled": "கேன்சல்ட்",
-    "confirm": "கன்ஃபர்ம்",
-    "confirmed": "கன்ஃபர்ம்ட்",
-    "location": "லொக்கேஷன்",
-    "address": "அட்ரஸ்",
-    "route": "ரூட்",
-    "map": "மேப்",
-    "arrive": "அரைவ்",
-    "arrival": "அரைவல்",
-    "ready": "ரெடி",
-    "start": "ஸ்டார்ட்",
-    "started": "ஸ்டார்ட்டட்",
-    "wait": "வெயிட்",
-    "waiting": "வெயிட்டிங்",
-    "reached": "ரீச்ட்",
-    "share": "ஷேர்",
-    "track": "ட்ராக்",
-    # OTP / tech
-    "otp": "ஓடிபி",
-    "pin": "பின்",
-    "id": "ஐடி",
-    "app": "ஆப்",
-    "online": "ஆன்லைன்",
-    "offline": "ஆஃப்லைன்",
-    "mobile": "மொபைல்",
-    "phone": "ஃபோன்",
-    "number": "நம்பர்",
-    "call": "கால்",
-    "message": "மெசேஜ்",
-    "chat": "சாட்",
-    # Payment
-    "pay": "பே",
-    "payment": "பேமென்ட்",
-    "cash": "கேஷ்",
-    "card": "கார்ட்",
-    "upi": "யூபிஐ",
-    "price": "ப்ரைஸ்",
-    "fare": "ஃபேர்",
-    "charge": "சார்ஜ்",
-    "free": "ஃப்ரீ",
-    # Common English words in Tamil conversation
-    "please": "ப்ளீஸ்",
-    "thank": "தேங்க்",
-    "thanks": "தேங்க்ஸ்",
-    "sorry": "சாரி",
-    "ok": "ஓகே",
-    "okay": "ஓகே",
-    "yes": "யெஸ்",
-    "no": "நோ",
-    "hello": "ஹலோ",
-    "hi": "ஹாய்",
-    "bye": "பை",
-    "sir": "சார்",
-    "madam": "மேடம்",
-    "name": "நேம்",
-    "help": "ஹெல்ப்",
-    "problem": "ப்ராப்ளம்",
-    "issue": "இஷ்யூ",
-    "safe": "சேஃப்",
-    "fast": "ஃபாஸ்ட்",
-    "slow": "ஸ்லோ",
-    "minute": "மினிட்",
-    "minutes": "மினிட்ஸ்",
-    "hour": "அவர்",
-    "hours": "அவர்ஸ்",
-    "second": "செகண்ட்",
-    "service": "சர்வீஸ்",
-    "support": "சப்போர்ட்",
-    "review": "ரிவ்யூ",
-    "rating": "ரேட்டிங்",
-    "good": "குட்",
-    "bad": "பேட்",
-    "safe": "சேஃப்",
-    "first": "ஃபர்ஸ்ட்",
-    "last": "லாஸ்ட்",
-    "next": "நெக்ஸ்ட்",
-    "new": "நியூ",
-    "done": "டன்",
-    "complete": "கம்ப்ளீட்",
-    "completed": "கம்ப்ளீட்டட்",
+_OVERRIDES: dict[str, str] = {
+    # Function words
+    "is": "இஸ்", "are": "ஆர்", "was": "வாஸ்", "were": "வேர்",
+    "has": "ஹாஸ்", "have": "ஹேவ்", "had": "ஹாட்",
+    "not": "நாட்", "but": "பட்", "and": "அண்ட்", "or": "ஆர்",
+    "for": "ஃபார்", "from": "ஃப்ரம்", "with": "வித்",
+    "the": "த", "a": "எ", "an": "ஆன்",
+    "to": "டு", "in": "இன்", "on": "ஆன்", "at": "அட்", "by": "பை", "of": "ஆஃப்",
+    "your": "யுவர்", "you": "யூ", "my": "மை", "our": "அவர்",
+    "his": "ஹிஸ்", "her": "ஹர்", "its": "இட்ஸ்",
+    "this": "திஸ்", "that": "தட்", "it": "இட்",
+    "will": "வில்", "can": "கேன்", "do": "டூ",
+    "no": "நோ", "yes": "யெஸ்", "ok": "ஓகே", "okay": "ஓகே",
+    "please": "ப்ளீஸ்", "thank": "தேங்க்", "thanks": "தேங்க்ஸ்", "sorry": "சாரி",
+    # Loanwords with conventional Tamil spellings (CMU phonetic mapping gets these wrong)
+    "booking": "புக்கிங்", "booked": "புக்ட்",
+    "airport": "ஏர்போர்ட்", "station": "ஸ்டேஷன்",
+    "phone": "ஃபோன்", "mobile": "மொபைல்", "message": "மெசேஜ்",
+    "share": "ஷேர்", "payment": "பேமெண்ட்",
+    "cancel": "கேன்சல்", "confirm": "கன்பர்ம்", "confirmed": "கன்பர்ம்ட்",
+    "taxi": "டாக்சி", "cab": "கேப்", "ready": "ரெடி", "waiting": "வெயிட்டிங்",
+    "pickup": "பிக்கப்", "drop": "ட்ராப்",
+    "fare": "ஃபேர்", "sir": "சார்", "madam": "மேடம்",
+    "arrive": "அரைவ்", "arrived": "அரைவ்ட்", "arrives": "அரைவ்ஸ்",
+    "service": "சர்வீஸ்", "minutes": "மினிட்ஸ்", "minute": "மினிட்",
+    "hours": "அவர்ஸ்", "hour": "அவர்",
+    "kilometer": "கிலோமீட்டர்", "kilometers": "கிலோமீட்டர்ஸ்", "km": "கிலோமீட்டர்",
+    "license": "லைசென்ஸ்", "licence": "லைசென்ஸ்",
+    "number": "நம்பர்", "numbers": "நம்பர்ஸ்",
+    "vehicle": "வெஹிக்கிள்", "car": "கார்", "auto": "ஆட்டோ",
+    "driver": "ட்ரைவர்", "driver's": "ட்ரைவர்ஸ்",
+    "otp": "ஓ டீ பீ", "pin": "பின்", "code": "கோட்",
+    "location": "லொகேஷன்", "route": "ரூட்", "traffic": "ட்ராஃபிக்",
+    "toll": "டோல்", "gate": "கேட்",
+    "rupees": "ரூபீஸ்", "rupee": "ரூபீ",
+    "cash": "கேஷ்", "online": "ஆன்லைன்", "paid": "பெய்ட்",
+    "am": "ஏ எம்", "pm": "பி எம்", "a.m.": "ஏ எம்", "p.m.": "பி எம்",
+    "oh": "ஓ", "point": "பாயிண்ட்",
+    # English numbers for natural speech & time in cab apps
+    "zero": "ஸீரோ", "one": "வன்", "two": "டூ", "three": "த்ரீ",
+    "four": "ஃபோர்", "five": "ஃபைவ்", "six": "சிக்ஸ்", "seven": "செவன்",
+    "eight": "எயிட்", "nine": "நைன்", "ten": "டென்",
+    "eleven": "இலெவன்", "twelve": "ட்வெல்வ்", "thirteen": "தர்ட்டீன்",
+    "fourteen": "ஃபோர்ட்டீன்", "fifteen": "ஃபிஃப்ட்டீன்", "sixteen": "சிக்ஸ்டீன்",
+    "seventeen": "செவன்ட்டீன்", "eighteen": "எய்ட்டீன்", "nineteen": "நைன்ட்டீன்",
+    "twenty": "ட்வென்ட்டி", "thirty": "தேர்ட்டி", "forty": "ஃபோர்ட்டி",
+    "fifty": "ஃபிஃப்ட்டி", "sixty": "சிக்ஸ்டி", "seventy": "செவன்ட்டி",
+    "eighty": "எய்ட்டி", "ninety": "நைன்ட்டி",
+    "hundred": "ஹண்ட்ரட்", "thousand": "தௌசண்ட்",
 }
 
-# Digits → natural Tamil loanword forms (bypass g2p — these are always correct)
-# ஃ for /f/ sounds: four→ஃபோர், five→ஃபைவ்
+# Digits → Tamil loanword forms
 _DIGIT_TAMIL = {
     "0": "ஸீரோ", "1": "வன்", "2": "டூ", "3": "த்ரீ", "4": "ஃபோர்",
     "5": "ஃபைவ்", "6": "சிக்ஸ்", "7": "செவன்", "8": "எயிட்", "9": "நைன்",
@@ -142,15 +83,8 @@ _TAMIL_NUMS = {
     19: "பத்தொன்பது", 20: "இருபது", 21: "இருபத்தொன்று", 22: "இருபத்திரண்டு",
     23: "இருபத்துமூன்று", 24: "இருபத்தினான்கு", 25: "இருபத்தைந்து",
     30: "முப்பது", 35: "முப்பத்தைந்து", 40: "நாற்பது", 45: "நாற்பத்தைந்து",
-    50: "ஐம்பது", 55: "ஐம்பத்தைந்து", 0o0: "சுழியம்",
+    50: "ஐம்பது", 55: "ஐம்பத்தைந்து",
 }
-
-def _time_to_tamil(h: int, m: int) -> str:
-    h_word = _TAMIL_NUMS.get(h, str(h))
-    if m == 0:
-        return f"{h_word}"
-    m_word = _TAMIL_NUMS.get(m, str(m))
-    return f"{h_word} {m_word}"
 
 # Tamil letter names for abbreviations (OTP → ஓ டீ பீ)
 _LETTER_NAMES: dict[str, str] = {
@@ -162,39 +96,100 @@ _LETTER_NAMES: dict[str, str] = {
     "Y": "வை", "Z": "ஸெட்",
 }
 
-# Expand digit sequences (2-6 digits) that are NOT part of time (7:30) or decimal (3.5)
-# "4832." is fine — the dot is sentence punctuation, not a decimal point
+_DIGIT_WORDS = {
+    "0": "zero", "1": "one", "2": "two", "3": "three", "4": "four",
+    "5": "five", "6": "six", "7": "seven", "8": "eight", "9": "nine"
+}
+
+# Indian vehicle registration plates (e.g. TN82CS1312, KA 01 AB 1234, DL3CAA1111)
+_RAW_PLATE_RE = re.compile(
+    r"\b([A-Za-z]{2})[\s-]?(\d{1,2})[\s-]?([A-Za-z]{1,3})[\s-]?(\d{4})\b"
+)
+
+# Spelled plate from normalizer: "T N eight two C S one three one two"
+_SPELLED_PLATE_RE = re.compile(
+    r"\b([A-Za-z])\s+([A-Za-z])\s+((?:[a-z]+|\d)\s+(?:[a-z]+|\d))\s+([A-Za-z](?:\s+[A-Za-z]){0,2})\s+((?:[a-z]+|\d)\s+(?:[a-z]+|\d)\s+(?:[a-z]+|\d)\s+(?:[a-z]+|\d))\b",
+    re.IGNORECASE
+)
+
+
+def _format_vehicle_plate(text: str) -> str:
+    """Format license plates with distinct letter pauses and paired numbers.
+
+    e.g. TN82CS1312 -> T - N, eight - two, C - S, one - three, one - two
+    """
+    def raw_repl(m):
+        state = " - ".join(c.upper() for c in m.group(1))
+        rto_digits = [_DIGIT_WORDS.get(d, d) for d in m.group(2)]
+        rto = " - ".join(rto_digits)
+        series = " - ".join(c.upper() for c in m.group(3))
+        reg_digits = [_DIGIT_WORDS.get(d, d) for d in m.group(4)]
+        reg = f"{reg_digits[0]} - {reg_digits[1]}, {reg_digits[2]} - {reg_digits[3]}"
+        return f"{state}, {rto}, {series}, {reg}"
+
+    text = _RAW_PLATE_RE.sub(raw_repl, text)
+
+    def spelled_repl(m):
+        state = f"{m.group(1).upper()} - {m.group(2).upper()}"
+        rto = " - ".join(m.group(3).split())
+        series = " - ".join(c.upper() for c in m.group(4).split())
+        reg_words = m.group(5).split()
+        reg = f"{reg_words[0]} - {reg_words[1]}, {reg_words[2]} - {reg_words[3]}"
+        return f"{state}, {rto}, {series}, {reg}"
+
+    text = _SPELLED_PLATE_RE.sub(spelled_repl, text)
+    return text
+
+
+_EN_ONES = [
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+    "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+    "seventeen", "eighteen", "nineteen"
+]
+_EN_TENS = ["", "", "twenty", "thirty", "forty", "fifty"]
+
+
+def _english_num_word(n: int) -> str:
+    if n < 20:
+        return _EN_ONES[n]
+    t, o = divmod(n, 10)
+    return _EN_TENS[t] + (f" {_EN_ONES[o]}" if o else "")
+
+
+_TIME_RE = re.compile(
+    r"\b(\d{1,2}):(\d{2})(?:\s?(A\.?M\.?|P\.?M\.?|am|pm))?\b",
+    re.IGNORECASE
+)
+
+
+def _format_time_english(h: int, m: int, suffix: str | None = None) -> str:
+    """Format time in natural English (e.g. 7:30 am -> seven thirty AM)."""
+    h12 = ((h - 1) % 12) + 1
+    h_str = _EN_ONES[h12]
+    if m == 0:
+        m_str = ""
+    elif m < 10:
+        m_str = f" oh {_EN_ONES[m]}"
+    else:
+        m_str = f" {_english_num_word(m)}"
+    s_upper = (suffix or "").upper().replace(".", "")
+    if "P" in s_upper:
+        period = " PM"
+    elif "A" in s_upper:
+        period = " AM"
+    else:
+        period = ""
+    return f"{h_str}{m_str}{period}".strip()
+
+
+# Regex patterns
 _DIGIT_SEQ_RE = re.compile(r"(?<![:\d])(\d{2,6})(?![:\.]\d)")
-# Time pattern: 7:30, 10:15 etc → expand to Tamil words
-_TIME_RE = re.compile(r"\b(\d{1,2}):(\d{2})\b")
 _LATIN_WORD_RE = re.compile(r"[A-Za-z]+")
-_TAMIL_RE = re.compile(r"[஀-௿]")
-
-# ── Backend: IndicXlit ───────────────────────────────────────────────────────
-
-_xlit_engine = None
-_xlit_tried = False
 
 
-def _get_xlit():
-    global _xlit_engine, _xlit_tried
-    if _xlit_tried:
-        return _xlit_engine
-    _xlit_tried = True
-    try:
-        from ai4bharat.transliteration import XlitEngine
-        _xlit_engine = XlitEngine("ta", beam_width=6, rescore=True, src_script_type="en")
-        logger.info("IndicXlit loaded for Tamil transliteration")
-    except Exception as e:
-        logger.warning("IndicXlit unavailable (%s); falling back to g2p", e)
-        _xlit_engine = None
-    return _xlit_engine
+# ── Tier 2: CMU Dict + ARPAbet → Tamil ──────────────────────────────────────
 
-
-# ── Backend: g2p ARPAbet fallback ────────────────────────────────────────────
-
-# ARPAbet consonant → Tamil base
-_C = {
+_ARPA_CONSONANT: dict[str, str] = {
     "B": "ப", "CH": "ச", "D": "ட", "DH": "த",
     "F": "ஃப", "G": "க", "HH": "ஹ", "JH": "ஜ",
     "K": "க", "L": "ல", "M": "ம", "N": "ந",
@@ -202,83 +197,145 @@ _C = {
     "SH": "ஷ", "T": "ட", "TH": "த", "V": "வ",
     "W": "வ", "Y": "ய", "Z": "ஸ", "ZH": "ஷ",
 }
-# ARPAbet vowel → (independent, dependent diacritic)
-_V = {
-    "AA": ("ஆ", "ா"), "AE": ("அ", ""), "AH": ("அ", ""),
-    "AO": ("ஆ", "ா"), "AW": ("அவ்", "ாவ்"), "AY": ("ஐ", "ை"),
+
+_ARPA_VOWEL: dict[str, tuple[str, str]] = {
+    "AA": ("ஆ", "ா"), "AE": ("ஆ", "ா"), "AH": ("அ", ""),
+    "AO": ("ஆ", "ா"), "AW": ("அவ்", "வ்"), "AY": ("ஐ", "ை"),
     "EH": ("எ", "ெ"), "ER": ("அர்", "ர்"), "EY": ("ஏ", "ே"),
     "IH": ("இ", "ி"), "IY": ("ஈ", "ீ"), "OW": ("ஓ", "ோ"),
-    "OY": ("ஓய்", "ோய்"), "UH": ("உ", "ு"), "UW": ("யூ", "ூ"),
+    "OY": ("ஓய்", "ோய்"), "UH": ("உ", "ு"), "UW": ("ஊ", "ூ"),
 }
 
-_g2p = None
-_g2p_tried = False
+_cmu_dict: dict[str, list] | None = None
+_cmu_loaded = False
 
 
-def _get_g2p():
-    global _g2p, _g2p_tried
-    if _g2p_tried:
-        return _g2p
-    _g2p_tried = True
+def _get_cmu() -> dict[str, list] | None:
+    global _cmu_dict, _cmu_loaded
+    if _cmu_loaded:
+        return _cmu_dict
+    _cmu_loaded = True
     try:
         import nltk
-        for pkg, path in [("averaged_perceptron_tagger_eng", "taggers/averaged_perceptron_tagger_eng"),
-                           ("cmudict", "corpora/cmudict")]:
-            try:
-                nltk.data.find(path)
-            except LookupError:
-                nltk.download(pkg, quiet=True)
-        from g2p_en import G2p
-        _g2p = G2p()
+        try:
+            nltk.data.find("corpora/cmudict")
+        except LookupError:
+            nltk.download("cmudict", quiet=True)
+        from nltk.corpus import cmudict
+        _cmu_dict = cmudict.dict()
+        logger.info("CMU dict loaded: %d words", len(_cmu_dict))
     except Exception as e:
-        logger.warning("g2p-en unavailable (%s)", e)
-    return _g2p
+        logger.warning("CMU dict unavailable: %s", e)
+    return _cmu_dict
 
 
 def _arpabet_to_tamil(phones: list[str]) -> str:
     out: list[str] = []
-    pending: str | None = None
+    pending_consonant: str | None = None
 
     def flush():
-        nonlocal pending
-        if pending is not None:
-            out.append(pending + "்")
-            pending = None
+        nonlocal pending_consonant
+        if pending_consonant is not None:
+            out.append(pending_consonant + "்")
+            pending_consonant = None
 
-    for ph in phones:
+    for i, ph in enumerate(phones):
         bare = ph.rstrip("012")
-        if bare in _C:
+        if bare in _ARPA_CONSONANT:
             flush()
-            pending = _C[bare]
-        elif bare in _V:
-            indep, dep = _V[bare]
-            if pending is not None:
-                if dep == "":
-                    out.append(pending)
-                elif dep == "ர்":
-                    out.append(pending + "ர்")
-                else:
-                    out.append(pending + dep)
-                pending = None
+            c = _ARPA_CONSONANT[bare]
+            # N at word-final or before another consonant → ன் (alveolar), not ந (dental)
+            if bare == "N":
+                next_bare = phones[i + 1].rstrip("012") if i + 1 < len(phones) else None
+                if next_bare is None or next_bare in _ARPA_CONSONANT:
+                    c = "ன"
+            pending_consonant = c
+        elif bare in _ARPA_VOWEL:
+            indep, dep = _ARPA_VOWEL[bare]
+            if pending_consonant is not None:
+                out.append(pending_consonant + dep)
+                pending_consonant = None
             else:
                 out.append(indep)
         else:
             flush()
-            out.append(ph)
     flush()
     return "".join(out)
 
 
-def _g2p_transliterate(word: str) -> str:
-    g2p = _get_g2p()
-    if g2p is None:
-        return word
+def _cmu_transliterate(word: str) -> str | None:
+    cmu = _get_cmu()
+    if cmu is None:
+        return None
+    phones = cmu.get(word.lower())
+    if not phones:
+        return None
+    result = _arpabet_to_tamil(phones[0])
+    return result if result.strip() else None
+
+
+# ── Tier 3: IndicXlit via CTranslate2 ───────────────────────────────────────
+
+_xlit_translator = None
+_xlit_loaded = False
+_xlit_src_vocab: dict[str, int] = {}
+_xlit_tgt_vocab: list[str] = []
+
+
+_XLIT_MODEL_DIR = str(Path(__file__).resolve().parent.parent.parent / "models" / "indicxlit_ct2")
+
+
+def _load_xlit():
+    global _xlit_translator, _xlit_loaded, _xlit_src_vocab, _xlit_tgt_vocab
+    if _xlit_loaded:
+        return _xlit_translator
+    _xlit_loaded = True
     try:
-        phones = g2p(word)
-        result = _arpabet_to_tamil(phones)
-        return result if result.strip() else word
-    except Exception:
-        return word
+        import ctranslate2
+        import json
+
+        ct2_dir = _XLIT_MODEL_DIR
+        if not Path(ct2_dir).exists():
+            from huggingface_hub import snapshot_download
+            repo = snapshot_download("Singla0009/all-indic-transliteration")
+            ct2_dir = f"{repo}/indicxlit_ct2_fp32"
+
+        _xlit_translator = ctranslate2.Translator(
+            ct2_dir, device="cpu", inter_threads=1,
+        )
+
+        with open(f"{ct2_dir}/source_vocabulary.json") as f:
+            _xlit_src_vocab = json.load(f)
+        with open(f"{ct2_dir}/target_vocabulary.json") as f:
+            _xlit_tgt_vocab = json.load(f)
+
+        logger.info("IndicXlit CTranslate2 loaded from %s", ct2_dir)
+    except Exception as e:
+        logger.warning("IndicXlit CTranslate2 unavailable: %s", e)
+        _xlit_translator = None
+    return _xlit_translator
+
+
+def _xlit_transliterate(word: str) -> str | None:
+    translator = _load_xlit()
+    if translator is None:
+        return None
+    try:
+        # IndicXlit expects character-level input with language tag
+        src_chars = list(word.lower())
+        lang_tag = "__ta__"
+        src_tokens = [lang_tag] + src_chars
+
+        results = translator.translate_batch(
+            [src_tokens], beam_size=4, max_decoding_length=64,
+        )
+        if results and results[0].hypotheses:
+            out_tokens = results[0].hypotheses[0]
+            result = "".join(out_tokens)
+            return result if result.strip() else None
+    except Exception as e:
+        logger.debug("IndicXlit failed for %r: %s", word, e)
+    return None
 
 
 # ── Core word transliterator ─────────────────────────────────────────────────
@@ -287,39 +344,115 @@ def _is_abbreviation(word: str) -> bool:
     return word.isupper() and len(word) >= 2 and word.isalpha()
 
 
-def _transliterate_word(word: str) -> str:
-    """Convert one Latin word to Tamil script.
+_cache: dict[str, str] = {}
 
-    Priority: lexicon → IndicXlit → g2p fallback.
-    """
+
+def _transliterate_word(word: str) -> str:
     lower = word.lower()
 
-    # 1. Curated lexicon — natural loanword forms matching training data
-    if lower in _LEXICON:
-        return _LEXICON[lower]
+    if lower in _cache:
+        return _cache[lower]
 
-    # 2. Abbreviations — spell out letter by letter with spaces
+    upper = word.upper()
+    if len(word) == 1 and upper in _LETTER_NAMES:
+        return _LETTER_NAMES[upper]
+
+    # 1. Abbreviations — spell out letter by letter with natural spacing
     if _is_abbreviation(word):
         return " ".join(_LETTER_NAMES.get(c, c) for c in word)
 
-    # 3. IndicXlit — trained on real Roman→Tamil pairs
-    xlit = _get_xlit()
-    if xlit is not None:
-        try:
-            out = xlit.translit_word(lower, topk=1)
-            if isinstance(out, dict):
-                cand = out.get("ta", "")
-                if isinstance(cand, list):
-                    cand = cand[0] if cand else ""
-                if cand and cand.strip():
-                    return cand
-            elif isinstance(out, list) and out:
-                return out[0]
-        except Exception as e:
-            logger.debug("IndicXlit failed for %r: %s", word, e)
+    # 2. Override dict — function words + known loanwords
+    if lower in _OVERRIDES:
+        return _OVERRIDES[lower]
 
-    # 4. g2p ARPAbet fallback
-    return _g2p_transliterate(word)
+    # 3. CMU Dict + phoneme mapping — 123K English words
+    result = _cmu_transliterate(word)
+
+    # 4. IndicXlit CTranslate2 — Indian names, Tanglish, unknown words
+    if result is None:
+        result = _xlit_transliterate(word)
+
+    # 5. Pass through
+    if result is None:
+        result = word
+
+    _cache[lower] = result
+    return result
+
+
+_ALL_DIGIT_WORDS = {
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+    "பூஜ்யம்", "ஒன்று", "இரண்டு", "மூன்று", "நான்கு", "ஐந்து", "ஆறு", "ஏழு", "எட்டு", "ஒன்பது",
+    "ஸீரோ", "வன்", "டூ", "த்ரீ", "ஃபோர்", "ஃபைவ்", "சிக்ஸ்", "செவன்", "எயிட்", "நைன்",
+}
+
+
+def _format_natural_digits(text: str) -> str:
+    """Format consecutive digit sequences into natural human prosodic cadence.
+
+    Instead of robotic comma inflections on every single digit (which sounds like
+    a robotic phone tree), this groups numbers into natural human breath units:
+      - 4-digit OTPs: 'four - eight, three - two' (2 pairs with subtle micro-gap and mid pause)
+      - 6-digit codes: '1 - 2, 3 - 4, 5 - 6'
+      - 10-digit phones: '9 - 8, 7 - 6, 5 - 4, 3 - 2, 1 - 0'
+    This gives clear separation between digits (no blurred 'two in three') while
+    sounding fluid, natural, and human.
+    """
+    words = text.split()
+    if not words:
+        return text
+
+    punct_chars = ".,;:!?—…।\n\"'()[]{}"
+    out: list[str] = []
+    i = 0
+    while i < len(words):
+        w = words[i]
+        clean = w.strip(punct_chars).lower()
+        if clean in _ALL_DIGIT_WORDS or clean.isdigit():
+            run = [w]
+            j = i + 1
+            while j < len(words):
+                next_w = words[j]
+                next_clean = next_w.strip(punct_chars).lower()
+                if bool(re.search(r"[,;:!?.।]$", run[-1])):
+                    break
+                if next_clean in _ALL_DIGIT_WORDS or next_clean.isdigit():
+                    run.append(next_w)
+                    j += 1
+                else:
+                    break
+
+            if len(run) == 1:
+                out.append(run[0])
+            elif len(run) == 4:
+                d1 = run[0].strip(punct_chars)
+                d2 = run[1].strip(punct_chars)
+                d3 = run[2].strip(punct_chars)
+                d4 = run[3].rstrip(punct_chars)
+                trail_punct = run[3][len(d4):]
+                out.append(f"{d1} - {d2}, {d3} - {d4}{trail_punct}")
+            elif len(run) == 6:
+                d1 = run[0].strip(punct_chars)
+                d2 = run[1].strip(punct_chars)
+                d3 = run[2].strip(punct_chars)
+                d4 = run[3].strip(punct_chars)
+                d5 = run[4].strip(punct_chars)
+                d6 = run[5].rstrip(punct_chars)
+                trail_punct = run[5][len(d6):]
+                out.append(f"{d1} - {d2}, {d3} - {d4}, {d5} - {d6}{trail_punct}")
+            else:
+                parts = []
+                for k in range(0, len(run), 2):
+                    pair = run[k:k+2]
+                    clean_pair = [p.strip(punct_chars) for p in pair]
+                    parts.append(" - ".join(clean_pair))
+                last_punct = run[-1][len(run[-1].rstrip(punct_chars)):]
+                out.append(", ".join(parts) + last_punct)
+            i = j
+        else:
+            out.append(w)
+            i += 1
+    return " ".join(out)
 
 
 # ── Sentence-level entry point ───────────────────────────────────────────────
@@ -327,23 +460,27 @@ def _transliterate_word(word: str) -> str:
 def transliterate_english_to_tamil(text: str) -> str:
     """Convert all Latin-script words and digit codes to Tamil script.
 
-    Tamil-script tokens pass through unchanged. Times (7:30) and decimals
-    (3.5) are protected from digit expansion.
+    Tamil-script tokens pass through unchanged. Vehicle plates (TN82CS1312),
+    times (7:30 AM), and OTP codes are given crisp, natural prosodic cadence
+    with human-sounding pauses.
     """
-    # Expand time patterns first (7:30 → ஏழு முப்பது) before digit expansion
+    # 1. Expand vehicle license plates first so letters/digits are not mangled
+    text = _format_vehicle_plate(text)
+
+    # 2. Expand times in English (e.g. 7:30 am -> seven thirty AM)
     def _expand_time(m: re.Match) -> str:
         h, mn = int(m.group(1)), int(m.group(2))
-        return _time_to_tamil(h, mn)
+        suffix = m.group(3)
+        return _format_time_english(h, mn, suffix)
 
     text = _TIME_RE.sub(_expand_time, text)
 
-    # Expand digit sequences (OTPs, PINs, codes) to individual digit words
     def _expand_digits(m: re.Match) -> str:
         return " ".join(_DIGIT_TAMIL[d] for d in m.group(1))
 
     text = _DIGIT_SEQ_RE.sub(_expand_digits, text)
+    text = _format_natural_digits(text)
 
-    # Transliterate Latin words
     parts: list[str] = []
     last_end = 0
     for m in _LATIN_WORD_RE.finditer(text):
@@ -352,4 +489,5 @@ def transliterate_english_to_tamil(text: str) -> str:
         last_end = m.end()
     parts.append(text[last_end:])
 
-    return re.sub(r" {2,}", " ", "".join(parts))
+    joined = re.sub(r" {2,}", " ", "".join(parts))
+    return _format_natural_digits(joined)

@@ -61,6 +61,11 @@ class TestDomainRules:
         assert eng.normalize("arrive at 7:30 PM.") == "arrive at seven thirty PM."
         assert eng.normalize("pickup at 9:00 AM") == "pickup at nine AM"
 
+    def test_vehicle_plate_spelling(self):
+        ta = DomainRuleEngine(language="ta")
+        out = ta.normalize("வண்டி TN82CS1312")
+        assert "T N eight two C S one three one two" in out
+
     def test_time_tamil(self):
         ta = DomainRuleEngine(language="ta")
         out = ta.normalize("கேப் 7:30 வரும்")

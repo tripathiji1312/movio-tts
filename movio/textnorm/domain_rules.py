@@ -163,13 +163,12 @@ class DomainRuleEngine:
             suffix = (m.group(3) or "").upper()
             explicit_pm = suffix.startswith("P")
             explicit_am = suffix.startswith("A")
+            if explicit_am or explicit_pm:
+                period = "AM" if explicit_am else "PM"
+                minute_part = f" {english_number(mi)}" if mi else ""
+                return f"{english_number(h12(h))}{minute_part} {period}"
             if self._lang_is_ta():
-                if explicit_pm:
-                    period = "மாலை"
-                elif explicit_am:
-                    period = "காலை"
-                else:
-                    period = "காலை" if h < 12 else "மதியம்" if h < 16 else "மாலை" if h < 20 else "இரவு"
+                period = "காலை" if h < 12 else "மதியம்" if h < 16 else "மாலை" if h < 20 else "இரவு"
                 minute_part = f" {numfn(mi)} நிமிடம்" if mi else ""
                 # Check if the period word already precedes the time in the text
                 start = m.start()
@@ -177,13 +176,8 @@ class DomainRuleEngine:
                 if period in prefix:
                     return f"{numfn(h12(h))} மணி{minute_part}"
                 return f"{period} {numfn(h12(h))} மணி{minute_part}"
-            if explicit_am:
-                period = "AM"
-            elif explicit_pm:
-                period = "PM"
-            else:
-                period = "AM" if h < 12 else "PM"
             minute_part = f" {numfn(mi)}" if mi else ""
+            period = "AM" if h < 12 else "PM"
             return f"{numfn(h12(h))}{minute_part} {period}"
 
         return TIME_RE.sub(repl, text)
@@ -256,7 +250,16 @@ class DomainRuleEngine:
         return PHONE_RE.sub(repl, text)
 
     def _expand_vehicle(self, text: str) -> str:
-        return VEHICLE_RE.sub(lambda m: self._spell_alnum(re.sub(r"[\s-]", "", m.group(1))), text)
+        def _spell_vehicle(token: str) -> str:
+            parts = []
+            for ch in token:
+                if ch.isalpha():
+                    parts.append(ch.upper())
+                elif ch.isdigit():
+                    parts.append(english_number(int(ch)))
+            return " ".join(parts)
+
+        return VEHICLE_RE.sub(lambda m: _spell_vehicle(re.sub(r"[\s-]", "", m.group(1))), text)
 
     def _expand_currency(self, text: str) -> str:
         numfn = self._number_fn()
@@ -271,6 +274,20 @@ class DomainRuleEngine:
 
     def _expand_numbers(self, text: str) -> str:
         numfn = self._number_fn()
+
+        # Pre-process OTP / PIN / passcode contexts with spaced digits (e.g. "otp is 483   2" or "OTP: 4 8 3 2")
+        otp_context_re = re.compile(
+            r"\b(otp(?:\s+is|\s*:|\s*-)?|pin(?:\s+is|\s*:|\s*-)?|code(?:\s+is|\s*:|\s*-)?|passcode(?:\s+is|\s*:|\s*-)?|"
+            r"ஓடிபி(?:\s+எண்|\s*:|\s*-)?|கடவுச்சொல்(?:\s+எண்|\s*:|\s*-)?)\s+((?:\d\s*){3,8})\b",
+            re.IGNORECASE,
+        )
+
+        def _otp_repl(m):
+            prefix = m.group(1)
+            raw_digits = re.sub(r"\D", "", m.group(2))
+            return f"{prefix} " + " ".join(numfn(int(d)) for d in raw_digits)
+
+        text = otp_context_re.sub(_otp_repl, text)
 
         def repl(m):
             digits = m.group(0)

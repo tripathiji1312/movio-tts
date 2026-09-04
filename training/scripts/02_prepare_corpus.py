@@ -186,6 +186,140 @@ def quality_score(audio: np.ndarray, sr: int) -> float:
     return (snr_score + clip_score + flatness_score) / 3.0
 
 
+def extract_ref_audio(
+    speaker_id: str,
+    raw_dir: Path,
+    voice_out: Path,
+    sample_rate: int = 24000,
+    target_dur_min: float = 8.0,
+    target_dur_max: float = 15.0,
+) -> None:
+    """Find speaker_id in parquet files, pick the best clip, save as voice profile.
+
+    Scans parquets in raw_dir until it finds a clip from speaker_id that is
+    between target_dur_min and target_dur_max seconds and has the best quality
+    score. Saves ref.wav + voice.yaml into voice_out/.
+    """
+    import soundfile as sf
+    import librosa
+
+    print(f"Searching for speaker '{speaker_id}' in {raw_dir}...")
+
+    best_audio = None
+    best_text = None
+    best_score = -1.0
+    found_count = 0
+
+    parquets = sorted(raw_dir.rglob("*.parquet"))
+    if not parquets:
+        raise SystemExit(f"No parquet files found in {raw_dir}. Run 01_download_data.py first.")
+
+    import pandas as pd
+
+    for pq_path in parquets:
+        try:
+            df = pd.read_parquet(pq_path)
+        except Exception as e:
+            print(f"  skip {pq_path.name}: {e}")
+            continue
+
+        # Find speaker/filename column
+        spk_col = None
+        for col in ("filename", "speaker_id", "speaker", "spk_id", "spk", "id"):
+            if col in df.columns:
+                spk_col = col
+                break
+        if spk_col is None:
+            continue
+
+        # Filter to this speaker
+        mask = df[spk_col].astype(str).str.contains(speaker_id, regex=False)
+        hits = df[mask]
+        if hits.empty:
+            continue
+
+        found_count += len(hits)
+        print(f"  found {len(hits)} clips in {pq_path.name}")
+
+        # Audio + text columns
+        audio_col = next((c for c in ("audio", "Audio", "speech") if c in hits.columns), None)
+        text_col = next((c for c in ("transcript", "text", "sentence", "transcription") if c in hits.columns), None)
+        if audio_col is None or text_col is None:
+            continue
+
+        for _, row in hits.iterrows():
+            text = row[text_col]
+            if not text or not isinstance(text, str):
+                continue
+            audio_data = row[audio_col]
+            try:
+                if isinstance(audio_data, dict):
+                    if "array" in audio_data:
+                        audio = np.array(audio_data["array"], dtype=np.float32)
+                        src_sr = audio_data.get("sampling_rate", 16000)
+                    elif "bytes" in audio_data:
+                        import io
+                        audio, src_sr = sf.read(io.BytesIO(audio_data["bytes"]))
+                        audio = audio.astype(np.float32)
+                    else:
+                        continue
+                elif isinstance(audio_data, bytes):
+                    import io
+                    audio, src_sr = sf.read(io.BytesIO(audio_data))
+                    audio = audio.astype(np.float32)
+                else:
+                    continue
+            except Exception:
+                continue
+
+            if audio.ndim > 1:
+                audio = audio.mean(axis=1)
+            if src_sr != sample_rate:
+                audio = librosa.resample(audio, orig_sr=src_sr, target_sr=sample_rate)
+
+            dur = len(audio) / sample_rate
+            if not (target_dur_min <= dur <= target_dur_max):
+                continue
+
+            score = quality_score(audio, sample_rate)
+            if score > best_score:
+                best_score = score
+                best_audio = trim_silence(audio, sample_rate)
+                best_text = text.strip()
+
+        # Stop after finding 5+ candidates (avoid scanning all 67 shards)
+        if found_count >= 5:
+            break
+
+    if best_audio is None:
+        raise SystemExit(
+            f"No clips found for speaker '{speaker_id}' with duration "
+            f"{target_dur_min}-{target_dur_max}s.\n"
+            f"Total clips found: {found_count} (may have wrong duration range)."
+        )
+
+    voice_out.mkdir(parents=True, exist_ok=True)
+    wav_path = voice_out / "ref.wav"
+    sf.write(wav_path, best_audio, sample_rate, subtype="PCM_16")
+    dur = len(best_audio) / sample_rate
+
+    yaml_path = voice_out / "voice.yaml"
+    yaml_path.write_text(
+        f"name: {voice_out.name}\n"
+        f"ref_audio: ref.wav\n"
+        f'ref_text: "{best_text}"\n'
+        f"speaker_id: {speaker_id}\n"
+        f"duration_s: {dur:.1f}\n"
+        f"quality_score: {best_score:.3f}\n",
+        encoding="utf-8",
+    )
+
+    print(f"\nExtracted ref audio for '{speaker_id}':")
+    print(f"  wav:     {wav_path}  ({dur:.1f}s, quality={best_score:.3f})")
+    print(f"  text:    {best_text}")
+    print(f"  config:  {yaml_path}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw-dir", required=True)
@@ -209,7 +343,40 @@ def main():
     ap.add_argument("--val-frac", type=float, default=0.03)
     ap.add_argument("--test-frac", type=float, default=0.03)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument(
+        "--extract-ref", metavar="SPEAKER_ID",
+        help="Extract a ref audio clip for this speaker ID from the parquets and "
+             "save it as a voice profile. Use with --voice-out. "
+             "Example: --extract-ref TAM_F_WIKI_01124"
+    )
+    ap.add_argument(
+        "--voice-out", default=None,
+        help="Output directory for the voice profile (default: config/voices/<speaker_id>). "
+             "Only used with --extract-ref."
+    )
+    ap.add_argument(
+        "--ref-min-dur", type=float, default=3.0,
+        help="Min clip duration in seconds for ref audio extraction (default: 3)."
+    )
+    ap.add_argument(
+        "--ref-max-dur", type=float, default=15.0,
+        help="Max clip duration in seconds for ref audio extraction (default: 15)."
+    )
     args = ap.parse_args()
+
+    # --extract-ref mode: just extract one speaker's best clip and exit
+    if args.extract_ref:
+        voice_out = Path(args.voice_out) if args.voice_out else \
+            Path("config/voices") / args.extract_ref.lower().replace(" ", "_")
+        extract_ref_audio(
+            speaker_id=args.extract_ref,
+            raw_dir=Path(args.raw_dir),
+            voice_out=voice_out,
+            sample_rate=args.sample_rate,
+            target_dur_min=args.ref_min_dur,
+            target_dur_max=args.ref_max_dur,
+        )
+        return
 
     import soundfile as sf
     import librosa

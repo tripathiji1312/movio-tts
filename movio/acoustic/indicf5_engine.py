@@ -35,14 +35,36 @@ def load_voice_profiles(voices_dir: str | Path) -> dict[str, VoiceProfile]:
     profiles: dict[str, VoiceProfile] = {}
     if not voices_dir.exists():
         return profiles
+
+    # Discover a reliable default reference audio file
+    default_ref_path = ""
+    candidate = voices_dir / "ta_female_neutral" / "ref.wav"
+    if candidate.exists():
+        default_ref_path = str(candidate.resolve())
+    else:
+        all_refs = list(voices_dir.glob("*/ref.wav"))
+        if all_refs:
+            default_ref_path = str(all_refs[0].resolve())
+
+    default_ref_text = "ஆனா நீங்க இப்போதான் மொத தடவையா இன்டர்நெட் யூஸ் பண்றீங்க அப்படின்னா இதை முழுசா கத்துக்க கொஞ்சம் நாள் ஆகும்."
+    female_meta = voices_dir / "ta_female_neutral" / "voice.yaml"
+    if female_meta.exists():
+        import yaml
+        txt = yaml.safe_load(female_meta.read_text(encoding="utf-8")).get("ref_text", "")
+        if txt and txt.strip():
+            default_ref_text = txt.strip()
+
     for meta_path in sorted(voices_dir.glob("*/voice.yaml")):
         import yaml
         meta = yaml.safe_load(meta_path.read_text(encoding="utf-8"))
         audio_rel = meta.get("ref_audio")
+        resolved = (meta_path.parent / audio_rel).resolve() if audio_rel else None
+        audio_path = str(resolved) if (resolved and resolved.exists()) else default_ref_path
+        ref_text = (meta.get("ref_text") or "").strip() or default_ref_text
         profile = VoiceProfile(
             name=meta.get("name", meta_path.parent.name),
-            ref_audio_path=str((meta_path.parent / audio_rel).resolve()),
-            ref_text=meta.get("ref_text", ""),
+            ref_audio_path=audio_path,
+            ref_text=ref_text,
         )
         profiles[profile.name] = profile
     return profiles
@@ -70,6 +92,7 @@ class IndicF5Engine:
         self.num_flow_steps = int(cfg.get("num_flow_steps", 12))
         self.sway_coef = float(cfg.get("sway_sampling_coef", -1.0))
         self.cfg_strength = float(cfg.get("cfg_strength", 2.0))
+        self.ode_method = cfg.get("ode_method", "euler")
         self.speed = float(cfg.get("speed", 1.0))
         self.default_voice = cfg.get("default_voice", "")
         self.voices = load_voice_profiles(cfg.get("voices_dir", "config/voices"))
@@ -147,18 +170,18 @@ class IndicF5Engine:
             ckpt_path=ckpt_path,
             mel_spec_type="vocos",
             vocab_file=vocab_path,
+            ode_method=self.ode_method,
             use_ema=use_ema,
             device=device,
         )
         model = model.eval()
-
         vocoder = load_vocoder(vocoder_name="vocos", is_local=False, device=device)
 
         self._model = model
         self._vocoder = vocoder
         logger.info(
-            "IndicF5Engine ready: model=%s device=%s flow_steps=%d",
-            self.model_path, device, self.num_flow_steps,
+            "IndicF5Engine ready: model=%s device=%s flow_steps=%d cfg=%.1f",
+            self.model_path, device, self.num_flow_steps, self.cfg_strength,
         )
 
     @property
@@ -184,14 +207,20 @@ class IndicF5Engine:
 
     def _get_ref_audio(self, voice: VoiceProfile) -> tuple:
         """Preprocess + cache reference audio (amortised across all requests)."""
-        key = voice.ref_audio_path
+        ref_path = voice.ref_audio_path
+        if not Path(ref_path).exists():
+            default_v = self.voices.get(self.default_voice)
+            if default_v and Path(default_v.ref_audio_path).exists():
+                ref_path = default_v.ref_audio_path
+        ref_text = (voice.ref_text or "").strip() or "ஆனா நீங்க இப்போதான் மொத தடவையா இன்டர்நெட் யூஸ் பண்றீங்க அப்படின்னா இதை முழுசா கத்துக்க கொஞ்சம் நாள் ஆகும்."
+        key = (ref_path, ref_text)
         if key not in self._ref_cache:
             self._ensure_indicf5_path()
             from f5_tts.infer.utils_infer import preprocess_ref_audio_text
-            ref_audio, ref_text = preprocess_ref_audio_text(
-                voice.ref_audio_path, voice.ref_text
+            ref_audio, proc_ref_text = preprocess_ref_audio_text(
+                ref_path, ref_text
             )
-            self._ref_cache[key] = (ref_audio, ref_text)
+            self._ref_cache[key] = (ref_audio, proc_ref_text)
         return self._ref_cache[key]
 
     # ── synthesis ────────────────────────────────────────────────────────────
@@ -201,6 +230,7 @@ class IndicF5Engine:
         text: str,
         voice: VoiceProfile,
         flow_steps: int | None = None,
+        speed: float | None = None,
     ) -> np.ndarray:
         self.load()
         self._ensure_indicf5_path()
@@ -208,6 +238,7 @@ class IndicF5Engine:
 
         ref_audio, ref_text = self._get_ref_audio(voice)
         steps = flow_steps or self.num_flow_steps
+        eff_speed = speed if speed is not None else self.speed
 
         # infer_process returns (audio_np, sample_rate, spectrogram)
         audio, _, _ = infer_process(
@@ -220,43 +251,77 @@ class IndicF5Engine:
             nfe_step=steps,
             sway_sampling_coef=self.sway_coef,
             cfg_strength=self.cfg_strength,
-            speed=self.speed,
+            speed=eff_speed,
         )
         return np.asarray(audio, dtype=np.float32)
 
-    def synthesize(self, text: str, voice_name: str | None = None) -> np.ndarray:
+    def synthesize(
+        self,
+        text: str,
+        voice_name: str | None = None,
+        speed: float | None = None,
+    ) -> np.ndarray:
         """Synthesize full text in one pass. Use synthesize_stream for low TTFA."""
         voice = self.get_voice(voice_name)
-        return self.synthesize_chunk(text, voice)
+        return self.synthesize_chunk(text, voice, speed=speed)
 
     def synthesize_stream(
         self,
         text: str,
         voice_name: str | None = None,
-        min_syl: int = 8,
-        max_syl: int = 14,
+        min_syl: int = 10,
+        max_syl: int = 24,
+        speed: float | None = None,
     ) -> Iterator[np.ndarray]:
         """Yield audio chunks as each prosodic chunk is synthesized.
 
-        First chunk is emitted after ~one synthesis pass (~250-400ms on T4),
-        so TTFA is roughly the cost of one chunk rather than the full utterance.
+        Trims excessive silence padding from chunk edges so inter-chunk
+        boundaries have a natural, gentle breath pause (~40ms) rather
+        than awkward 1-second silence gaps.
         """
         self.load()
         voice = self.get_voice(voice_name)
         chunks = chunk_text(text, min_syl=min_syl, max_syl=max_syl) or [text]
 
-        fade_n = ms_to_samples(20, self.sample_rate)
-        prev_tail: np.ndarray | None = None
+        from movio.utils.audio import trim_silence
 
-        for chunk in chunks:
-            audio = self.synthesize_chunk(chunk, voice)
+        for idx, chunk in enumerate(chunks):
+            audio = self.synthesize_chunk(chunk, voice, speed=speed)
             if audio is None or len(audio) == 0:
                 continue
-            if prev_tail is not None:
-                n = min(fade_n, len(audio), len(prev_tail))
-                if n > 0:
-                    ramp = np.linspace(0.0, 1.0, n, dtype=np.float32)
-                    audio = audio.copy()
-                    audio[:n] = audio[:n] * ramp + prev_tail[-n:] * (1.0 - ramp)
+
+            import re
+            is_sentence_end = bool(re.search(r"[.!?।]\s*$", chunk))
+            is_last = (idx == len(chunks) - 1)
+
+            # Human breath timing:
+            # - Between sentences (. ! ? ।): 240ms natural breath pause
+            # - At clause breaks (, ; :): 130ms gentle pause
+            # - Final chunk: 120ms clean decay
+            if is_last:
+                trail_ms = 120.0
+            elif is_sentence_end:
+                trail_ms = 240.0
+            else:
+                trail_ms = 130.0
+
+            trimmed = trim_silence(
+                audio,
+                threshold_db=-38.0,
+                min_silence_ms=30.0,
+                trail_silence_ms=trail_ms,
+                sample_rate=self.sample_rate,
+            )
+            if len(trimmed) > 0:
+                audio = trimmed
+
+            # Apply a brief 5ms micro-fade to eliminate any boundary clicks without softening onset
+            fade_len = int(0.005 * self.sample_rate)
+            if len(audio) > 2 * fade_len:
+                audio = audio.copy()
+                ramp_in = np.linspace(0.0, 1.0, fade_len, dtype=np.float32)
+                ramp_out = np.linspace(1.0, 0.0, fade_len, dtype=np.float32)
+                audio[:fade_len] *= ramp_in
+                audio[-fade_len:] *= ramp_out
+
             yield audio
-            prev_tail = audio

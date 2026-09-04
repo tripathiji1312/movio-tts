@@ -450,11 +450,9 @@ def infer_batch_process(
         if fix_duration is not None:
             duration = int(fix_duration * target_sample_rate / hop_length)
         else:
-            # Calculate duration using char count (not byte count) so
-            # English (1 byte/char) gets the same per-char duration as
-            # Tamil (3 bytes/char).
-            ref_text_len = len(ref_text)
-            gen_text_len = len(gen_text)
+            # Calculate duration
+            ref_text_len = len(ref_text.encode("utf-8"))
+            gen_text_len = len(gen_text.encode("utf-8"))
             duration = ref_audio_len + int(ref_audio_len / ref_text_len * gen_text_len / speed)
             # print("ref_text_len:", ref_text_len)
             # print("gen_text_len:", gen_text_len)
