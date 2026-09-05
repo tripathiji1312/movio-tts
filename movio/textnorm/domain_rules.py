@@ -123,6 +123,7 @@ class DomainRuleEngine:
 
     def normalize(self, text: str) -> str:
         text = text.translate(TA_DIGITS)
+        text = self._expand_ordinals(text)
         text = self._expand_booking_ids(text)
         text = self._expand_vehicle(text)
         text = self._expand_phone(text)
@@ -132,6 +133,32 @@ class DomainRuleEngine:
         text = self._expand_currency(text)
         text = self._expand_numbers(text)
         return re.sub(r"\s+", " ", text).strip()
+
+    _ORDINAL_RE = re.compile(r"\b(\d{1,2})(st|nd|rd|th)\b", re.IGNORECASE)
+    _ORDINAL_EN = {
+        1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth",
+        6: "sixth", 7: "seventh", 8: "eighth", 9: "ninth", 10: "tenth",
+        11: "eleventh", 12: "twelfth", 13: "thirteenth", 14: "fourteenth",
+        15: "fifteenth", 16: "sixteenth", 17: "seventeenth", 18: "eighteenth",
+        19: "nineteenth", 20: "twentieth", 21: "twenty first", 30: "thirtieth",
+        31: "thirty first",
+    }
+    _ORDINAL_TA = {
+        1: "முதல்", 2: "இரண்டாவது", 3: "மூன்றாவது", 4: "நான்காவது",
+        5: "ஐந்தாவது", 6: "ஆறாவது", 7: "ஏழாவது", 8: "எட்டாவது",
+        9: "ஒன்பதாவது", 10: "பத்தாவது", 11: "பதினொன்றாவது",
+        12: "பன்னிரண்டாவது", 20: "இருபதாவது", 21: "இருபத்தொன்றாவது",
+        30: "முப்பதாவது", 31: "முப்பத்தொன்றாவது",
+    }
+
+    def _expand_ordinals(self, text: str) -> str:
+        table = self._ORDINAL_TA if self._lang_is_ta() else self._ORDINAL_EN
+        def repl(m):
+            n = int(m.group(1))
+            if n in table:
+                return table[n]
+            return m.group(0)
+        return self._ORDINAL_RE.sub(repl, text)
 
     def _lang_is_ta(self) -> bool:
         return self.language == "ta"

@@ -18,60 +18,54 @@ logger = logging.getLogger(__name__)
 # high-frequency loanwords with conventional Tamil spellings.
 
 _OVERRIDES: dict[str, str] = {
-    # Function words
-    "is": "இஸ்", "are": "ஆர்", "was": "வாஸ்", "were": "வேர்",
-    "has": "ஹாஸ்", "have": "ஹேவ்", "had": "ஹாட்",
-    "not": "நாட்", "but": "பட்", "and": "அண்ட்", "or": "ஆர்",
-    "for": "ஃபார்", "from": "ஃப்ரம்", "with": "வித்",
-    "the": "த", "a": "எ", "an": "ஆன்",
-    "to": "டு", "in": "இன்", "on": "ஆன்", "at": "அட்", "by": "பை", "of": "ஆஃப்",
-    "your": "யுவர்", "you": "யூ", "my": "மை", "our": "அவர்",
-    "his": "ஹிஸ்", "her": "ஹர்", "its": "இட்ஸ்",
-    "this": "திஸ்", "that": "தட்", "it": "இட்",
-    "will": "வில்", "can": "கேன்", "do": "டூ",
-    "no": "நோ", "yes": "யெஸ்", "ok": "ஓகே", "okay": "ஓகே",
-    "please": "ப்ளீஸ்", "thank": "தேங்க்", "thanks": "தேங்க்ஸ்", "sorry": "சாரி",
-    # Loanwords with conventional Tamil spellings (CMU phonetic mapping gets these wrong)
-    "booking": "புக்கிங்", "booked": "புக்ட்",
-    "airport": "ஏர்போர்ட்", "station": "ஸ்டேஷன்",
-    "phone": "ஃபோன்", "mobile": "மொபைல்", "message": "மெசேஜ்",
-    "share": "ஷேர்", "payment": "பேமெண்ட்",
-    "cancel": "கேன்சல்", "confirm": "கன்பர்ம்", "confirmed": "கன்பர்ம்ட்",
-    "taxi": "டாக்சி", "cab": "கேப்", "ready": "ரெடி", "waiting": "வெயிட்டிங்",
-    "pickup": "பிக் அப்", "drop": "ட்ராப்",
-    "fare": "ஃபேர்", "sir": "சார்", "madam": "மேடம்",
-    "arrive": "அரைவ்", "arrived": "அரைவ்ட்", "arrives": "அரைவ்ஸ்",
-    "service": "சர்வீஸ்", "minutes": "மினிட்ஸ்", "minute": "மினிட்",
-    "hours": "அவர்ஸ்", "hour": "அவர்",
-    "kilometer": "கிலோமீட்டர்", "kilometers": "கிலோமீட்டர்ஸ்", "km": "கிலோமீட்டர்",
-    "license": "லைசென்ஸ்", "licence": "லைசென்ஸ்",
-    "number": "நம்பர்", "numbers": "நம்பர்ஸ்",
-    "vehicle": "வெஹிக்கிள்", "car": "கார்", "auto": "ஆட்டோ",
-    "driver": "ட்ரைவர்", "driver's": "ட்ரைவர்ஸ்",
-    "otp": "ஓ டீ பீ", "pin": "பின்", "code": "கோட்",
-    "location": "லொகேஷன்", "route": "ரூட்", "traffic": "ட்ராஃபிக்",
-    "toll": "டோல்", "gate": "கேட்",
-    "rupees": "ரூபீஸ்", "rupee": "ரூபீ", "rupaai": "ரூபாய்",
-    "cash": "கேஷ்", "online": "ஆன்லைன்", "paid": "பெய்ட்",
+    # Function words where CMU dict gives wrong vowels for Indian English
+    "a": "எ", "the": "த", "of": "ஆப்", "for": "போர்", "to": "டு",
+    "our": "அவர்", "your": "யுவர்",
+    # Abbreviations / units that need expansion (not transliteration)
     "am": "ஏ எம்", "pm": "பி எம்", "a.m.": "ஏ எம்", "p.m.": "பி எம்",
-    "oh": "ஓ", "point": "பாயிண்ட்",
-    # English numbers for natural speech & time in cab apps
-    "zero": "ஸீரோ", "one": "வன்", "two": "டூ", "three": "த்ரீ",
-    "four": "ஃபோர்", "five": "ஃபைவ்", "six": "சிக்ஸ்", "seven": "செவன்",
+    "otp": "ஓ டீ பீ", "gps": "ஜீ பீ எஸ்",
+    "km": "கிலோமீட்டர்", "hr": "அவர்", "hrs": "அவர்ஸ்",
+    # Words where auto pipeline produces broken output (hiatus, wrong phonemes)
+    "hour": "அவர்", "hours": "அவர்ஸ்",
+    "flower": "பிளவர்", "around": "அரவுண்ட்",
+    "kilometer": "கிலோமீட்டர்", "kilometers": "கிலோமீட்டர்ஸ்",
+    "vehicle": "வெஹிக்கிள்", "waiting": "வெயிட்டிங்",
+    # Transport domain — conventional Tamil loanword spellings
+    "booking": "புக்கிங்", "booked": "புக்டு",
+    "airport": "ஏர்போர்ட்", "cab": "கேப்", "taxi": "டாக்சி",
+    "fare": "பேர்", "pickup": "பிக்அப்", "drop": "டிராப்",
+    "driver": "டிரைவர்", "traffic": "டிராபிக்",
+    "signal": "சிக்னல்", "junction": "ஜங்ஷன்",
+    "confirm": "கன்பர்ம்", "confirmed": "கன்பர்ம்டு",
+    "cancel": "கேன்சல்", "cancelled": "கேன்சல்டு",
+    "arrive": "அரைவ்", "arrived": "அரைவ்டு",
+    "auto": "ஆட்டோ", "sir": "சார்", "madam": "மேடம்",
+    "rupees": "ரூபீஸ்", "rupee": "ரூபீ", "rupaai": "ரூபாய்",
+    "cash": "கேஷ்",
+    "delay": "டிலே", "delayed": "டிலேட்",
+    "express": "எக்ஸ்பிரஸ்", "platform": "பிளாட்பார்ம்",
+    "flyover": "பிளைஓவர்", "highway": "ஹைவே",
+    "transport": "டிரான்ஸ்போர்ட்", "transfer": "டிரான்ஸ்பர்",
+    "via": "வயா", "station": "ஸ்டேஷன்",
+    # Brand/service names where both CMU and IndicXlit get it wrong
+    "uber": "ஊபர்", "ola": "ஓலா", "rapido": "ராபிடோ",
+    # English numbers — consistent pronunciation for digit sequences
+    "zero": "ஸீரோ", "one": "வன்", "two": "டூ", "three": "திரீ",
+    "four": "போர்", "five": "பைவ்", "six": "சிக்ஸ்", "seven": "செவன்",
     "eight": "எயிட்", "nine": "நைன்", "ten": "டென்",
-    "eleven": "இலெவன்", "twelve": "ட்வெல்வ்", "thirteen": "தர்ட்டீன்",
-    "fourteen": "ஃபோர்ட்டீன்", "fifteen": "ஃபிஃப்ட்டீன்", "sixteen": "சிக்ஸ்டீன்",
-    "seventeen": "செவன்ட்டீன்", "eighteen": "எய்ட்டீன்", "nineteen": "நைன்ட்டீன்",
-    "twenty": "ட்வென்ட்டி", "thirty": "தேர்ட்டி", "forty": "ஃபோர்ட்டி",
-    "fifty": "ஃபிஃப்ட்டி", "sixty": "சிக்ஸ்டி", "seventy": "செவன்ட்டி",
-    "eighty": "எய்ட்டி", "ninety": "நைன்ட்டி",
-    "hundred": "ஹண்ட்ரட்", "thousand": "தௌசண்ட்",
+    "eleven": "இலெவன்", "twelve": "டுவெல்வ்", "thirteen": "தர்டீன்",
+    "fourteen": "போர்டீன்", "fifteen": "பிப்டீன்", "sixteen": "சிக்ஸ்டீன்",
+    "seventeen": "செவன்டீன்", "eighteen": "எய்டீன்", "nineteen": "நைன்டீன்",
+    "twenty": "டுவென்டி", "thirty": "தர்டி", "forty": "போர்டி",
+    "fifty": "பிப்டி", "sixty": "சிக்ஸ்டி", "seventy": "செவன்டி",
+    "eighty": "எய்டி", "ninety": "நைன்டி",
+    "hundred": "ஹன்ட்ரட்", "thousand": "தவுசண்ட்",
 }
 
 # Digits → Tamil loanword forms
 _DIGIT_TAMIL = {
-    "0": "ஸீரோ", "1": "வன்", "2": "டூ", "3": "த்ரீ", "4": "ஃபோர்",
-    "5": "ஃபைவ்", "6": "சிக்ஸ்", "7": "செவன்", "8": "எயிட்", "9": "நைன்",
+    "0": "ஸீரோ", "1": "வன்", "2": "டூ", "3": "திரீ", "4": "போர்",
+    "5": "பைவ்", "6": "சிக்ஸ்", "7": "செவன்", "8": "எயிட்", "9": "நைன்",
 }
 
 # Tamil number words for time (7:30 → ஏழு முப்பது)
@@ -99,6 +93,52 @@ _LETTER_NAMES: dict[str, str] = {
 _DIGIT_WORDS = {
     "0": "zero", "1": "one", "2": "two", "3": "three", "4": "four",
     "5": "five", "6": "six", "7": "seven", "8": "eight", "9": "nine"
+}
+
+_SYMBOL_NAMES: dict[str, str] = {
+    "@": "அட்",
+    "#": "ஹாஷ்",
+    "$": "டாலர்",
+    "%": "சதவீதம்",
+    "&": "அண்ட்",
+    "*": "ஸ்டார்",
+    "+": "பிளஸ்",
+    "=": "ஈக்வல்ஸ்",
+    "/": "ஸ்லாஷ்",
+    "\\": "பேக்ஸ்லாஷ்",
+    "|": "பைப்",
+    "~": "டில்டா",
+    "^": "கேரட்",
+    "<": "லெஸ் தான்",
+    ">": "கிரேட்டர் தான்",
+    "_": "அண்டர்ஸ்கோர்",
+    "{": "ஓபன் பிரேஸ்",
+    "}": "குளோஸ் பிரேஸ்",
+    "[": "ஓபன் பிராக்கெட்",
+    "]": "குளோஸ் பிராக்கெட்",
+    "©": "காபிரைட்",
+    "®": "ரெஜிஸ்டர்ட்",
+    "™": "டிரேட்மார்க்",
+    "°": "டிகிரீ",
+    "₹": "ரூபாய்",
+    "€": "யூரோ",
+    "£": "பவுண்ட்",
+    "¥": "யென்",
+    "§": "செக்ஷன்",
+    "¶": "பாரா",
+    "→": "",
+    "←": "",
+    "↔": "",
+    "•": "",
+    "—": "",
+    "–": "",
+    "…": "",
+    "\"": "",
+    "'": "",
+    "'": "",
+    "'": "",
+    "“": "",
+    "”": "",
 }
 
 # Indian vehicle registration plates (e.g. TN82CS1312, KA 01 AB 1234, DL3CAA1111)
@@ -191,7 +231,7 @@ _LATIN_WORD_RE = re.compile(r"[A-Za-z]+")
 
 _ARPA_CONSONANT: dict[str, str] = {
     "B": "ப", "CH": "ச", "D": "ட", "DH": "த",
-    "F": "ஃப", "G": "க", "HH": "ஹ", "JH": "ஜ",
+    "F": "ப", "G": "க", "HH": "ஹ", "JH": "ஜ",
     "K": "க", "L": "ல", "M": "ம", "N": "ந",
     "NG": "ங", "P": "ப", "R": "ர", "S": "ஸ",
     "SH": "ஷ", "T": "ட", "TH": "த", "V": "வ",
@@ -229,6 +269,69 @@ def _get_cmu() -> dict[str, list] | None:
     return _cmu_dict
 
 
+_VIRAMA = "்"
+_TAMIL_CONSONANTS = set("கஙசஜஞடணதநபமயரலவழளறனஸஷஹ")
+
+_STOPS = {"க", "ச", "ட", "த", "ப", "ஜ"}
+_SIBILANTS = {"ஸ", "ஷ", "ஹ"}
+_LIQUIDS = {"ர", "ல", "ள"}
+_NASALS = {"ங", "ஞ", "ண", "ந", "ம", "ன"}
+
+_VALID_CLUSTERS = {
+    "க்க", "ச்ச", "ட்ட", "த்த", "ப்ப", "ற்ற",
+    "ன்ன", "ண்ண", "ம்ம", "ல்ல", "ள்ள",
+    "ங்க", "ஞ்ச", "ண்ட", "ந்த", "ம்ப", "ன்ற",
+}
+
+
+def _is_foreign_cluster(c1: str, c2: str) -> bool:
+    trigram = c1 + _VIRAMA + c2
+    if trigram in _VALID_CLUSTERS:
+        return False
+    if c1 == c2:
+        return False
+    if c1 in _STOPS and c2 in _LIQUIDS:
+        return True
+    return False
+
+
+def _break_clusters(tamil: str) -> str:
+    """Insert helping vowels to break foreign consonant clusters.
+
+    Only breaks clusters that don't exist in Tamil phonology (like ப்ர, க்ல,
+    ஸ்ட). Preserves valid Tamil clusters (geminates like க்க, nasal+stop
+    like ம்ப, liquid+consonant like ர்க).
+
+    Uses ி (i-matra) for stop+liquid clusters (பிர, கில, டிர) — matches how
+    Tamil speakers actually pronounce English loanwords. Uses ி for sibilant
+    clusters too (ஸிட, ஷிர).
+    """
+    if _VIRAMA not in tamil:
+        return tamil
+
+    chars = list(tamil)
+    result = []
+    i = 0
+    while i < len(chars):
+        c = chars[i]
+        if c == _VIRAMA and i > 0 and i + 1 < len(chars):
+            prev_c = chars[i - 1]
+            next_c = chars[i + 1]
+            if prev_c in _TAMIL_CONSONANTS and next_c in _TAMIL_CONSONANTS:
+                if _is_foreign_cluster(prev_c, next_c):
+                    result.append("ி")
+                    if next_c == "ல" and prev_c in _STOPS:
+                        chars[i + 1] = "ள"
+                else:
+                    result.append(c)
+            else:
+                result.append(c)
+        else:
+            result.append(c)
+        i += 1
+    return "".join(result)
+
+
 def _arpabet_to_tamil(phones: list[str]) -> str:
     out: list[str] = []
     pending_consonant: str | None = None
@@ -244,7 +347,6 @@ def _arpabet_to_tamil(phones: list[str]) -> str:
         if bare in _ARPA_CONSONANT:
             flush()
             c = _ARPA_CONSONANT[bare]
-            # N at word-final or before another consonant → ன் (alveolar), not ந (dental)
             if bare == "N":
                 next_bare = phones[i + 1].rstrip("012") if i + 1 < len(phones) else None
                 if next_bare is None or next_bare in _ARPA_CONSONANT:
@@ -260,7 +362,8 @@ def _arpabet_to_tamil(phones: list[str]) -> str:
         else:
             flush()
     flush()
-    return "".join(out)
+    raw = "".join(out)
+    return _break_clusters(raw)
 
 
 def _cmu_transliterate(word: str) -> str | None:
@@ -332,6 +435,7 @@ def _xlit_transliterate(word: str) -> str | None:
         if results and results[0].hypotheses:
             out_tokens = results[0].hypotheses[0]
             result = "".join(out_tokens)
+            result = result.replace("ஃப", "ப").replace("ஃ", "")
             return result if result.strip() else None
     except Exception as e:
         logger.debug("IndicXlit failed for %r: %s", word, e)
@@ -347,32 +451,44 @@ def _is_abbreviation(word: str) -> bool:
 _cache: dict[str, str] = {}
 
 
+def _is_proper_noun(word: str) -> bool:
+    return len(word) > 1 and word[0].isupper() and not word.isupper()
+
+
 def _transliterate_word(word: str) -> str:
     lower = word.lower()
 
     if lower in _cache:
         return _cache[lower]
 
+    # 1. Override dict — function words + known loanwords (before letter names)
+    if lower in _OVERRIDES:
+        return _OVERRIDES[lower]
+
     upper = word.upper()
     if len(word) == 1 and upper in _LETTER_NAMES:
         return _LETTER_NAMES[upper]
 
-    # 1. Abbreviations — spell out letter by letter with natural spacing
+    # 2. Abbreviations — spell out letter by letter with natural spacing
     if _is_abbreviation(word):
         return " ".join(_LETTER_NAMES.get(c, c) for c in word)
 
-    # 2. Override dict — function words + known loanwords
-    if lower in _OVERRIDES:
-        return _OVERRIDES[lower]
-
-    # 3. CMU Dict + phoneme mapping — 123K English words
-    result = _cmu_transliterate(word)
-
-    # 4. IndicXlit CTranslate2 — Indian names, Tanglish, unknown words
-    if result is None:
+    # 3. Proper nouns (e.g. Chennai, Rajesh) → IndicXlit first, CMU fallback
+    if _is_proper_noun(word):
         result = _xlit_transliterate(word)
+        if result is None:
+            result = _cmu_transliterate(word)
+    else:
+        # 4. Common words → CMU dict first, IndicXlit fallback
+        result = _cmu_transliterate(word)
+        if result is None:
+            result = _xlit_transliterate(word)
 
-    # 5. Pass through
+    # 5. Apply cluster-breaking to all results
+    if result is not None and result != word:
+        result = _break_clusters(result)
+
+    # 6. Pass through
     if result is None:
         result = word
 
@@ -383,7 +499,7 @@ def _transliterate_word(word: str) -> str:
 _ALL_DIGIT_WORDS = {
     "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
     "பூஜ்யம்", "ஒன்று", "இரண்டு", "மூன்று", "நான்கு", "ஐந்து", "ஆறு", "ஏழு", "எட்டு", "ஒன்பது",
-    "ஸீரோ", "வன்", "டூ", "த்ரீ", "ஃபோர்", "ஃபைவ்", "சிக்ஸ்", "செவன்", "எயிட்", "நைன்",
+    "ஸீரோ", "வன்", "டூ", "திரீ", "போர்", "பைவ்", "சிக்ஸ்", "செவன்", "எயிட்", "நைன்",
 }
 
 
@@ -457,6 +573,27 @@ def _format_natural_digits(text: str) -> str:
 
 # ── Sentence-level entry point ───────────────────────────────────────────────
 
+def _expand_symbols(text: str) -> str:
+    """Replace symbols with their Tamil spoken equivalents.
+
+    Repeated identical symbols (like * * * * *) are collapsed to a single
+    expansion to avoid robotic repetition.
+    """
+    text = re.sub(r"([^\w\s])([\s]*\1)+", r"\1", text)
+    out = []
+    for ch in text:
+        if ch in _SYMBOL_NAMES:
+            replacement = _SYMBOL_NAMES[ch]
+            if replacement:
+                if out and out[-1] != " ":
+                    out.append(" ")
+                out.append(replacement)
+                out.append(" ")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
 def transliterate_english_to_tamil(text: str) -> str:
     """Convert all Latin-script words and digit codes to Tamil script.
 
@@ -464,7 +601,43 @@ def transliterate_english_to_tamil(text: str) -> str:
     times (7:30 AM), and OTP codes are given crisp, natural prosodic cadence
     with human-sounding pauses.
     """
-    # 1. Expand vehicle license plates first so letters/digits are not mangled
+    # 0. Expand ordinals (1st→first, 2nd→second, etc.)
+    _ORDINAL_MAP = {
+        "1st": "first", "2nd": "second", "3rd": "third", "4th": "fourth",
+        "5th": "fifth", "6th": "sixth", "7th": "seventh", "8th": "eighth",
+        "9th": "ninth", "10th": "tenth", "11th": "eleventh", "12th": "twelfth",
+        "13th": "thirteenth", "14th": "fourteenth", "15th": "fifteenth",
+        "16th": "sixteenth", "17th": "seventeenth", "18th": "eighteenth",
+        "19th": "nineteenth", "20th": "twentieth", "21st": "twenty first",
+        "30th": "thirtieth", "31st": "thirty first",
+    }
+    def _expand_ordinal(m: re.Match) -> str:
+        return _ORDINAL_MAP.get(m.group(0).lower(), m.group(0))
+    text = re.sub(r"\b\d{1,2}(?:st|nd|rd|th)\b", _expand_ordinal, text, flags=re.IGNORECASE)
+
+    # 0b. Expand contractions
+    _CONTRACTIONS = {
+        "don't": "do not", "can't": "cannot", "won't": "will not",
+        "wouldn't": "would not", "shouldn't": "should not", "couldn't": "could not",
+        "isn't": "is not", "aren't": "are not", "wasn't": "was not",
+        "weren't": "were not", "hasn't": "has not", "haven't": "have not",
+        "hadn't": "had not", "doesn't": "does not", "didn't": "did not",
+        "i'm": "I am", "i've": "I have", "i'll": "I will", "i'd": "I would",
+        "he's": "he is", "she's": "she is", "it's": "it is",
+        "we're": "we are", "they're": "they are", "you're": "you are",
+        "we've": "we have", "they've": "they have", "you've": "you have",
+        "we'll": "we will", "they'll": "they will", "you'll": "you will",
+        "let's": "let us", "that's": "that is", "who's": "who is",
+        "what's": "what is", "there's": "there is", "here's": "here is",
+    }
+    def _expand_contraction(m: re.Match) -> str:
+        return _CONTRACTIONS.get(m.group(0).lower(), m.group(0))
+    text = re.sub(r"\b\w+'\w+\b", _expand_contraction, text, flags=re.IGNORECASE)
+
+    # 1. Expand symbols to spoken Tamil words
+    text = _expand_symbols(text)
+
+    # 2. Expand vehicle license plates first so letters/digits are not mangled
     text = _format_vehicle_plate(text)
 
     # 2. Expand times in English (e.g. 7:30 am -> seven thirty AM)
