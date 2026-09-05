@@ -263,14 +263,24 @@ class DomainRuleEngine:
 
     def _expand_currency(self, text: str) -> str:
         numfn = self._number_fn()
-        rupee_re = re.compile(r"(?:₹|Rs\.?|ரூ)\s?(\d+(?:,\d+)*)")
+        # Prefix form: ₹350, Rs.350, Rs 350, ரூ350
+        prefix_re = re.compile(r"(?:₹|Rs\.?|ரூ)\s?(\d+(?:,\d+)*)")
+        # Suffix form: 350 rupees, 350 Rupees, 350 ரூபாய்
+        suffix_re = re.compile(r"\b(\d+(?:,\d+)*)\s+(?:rupees?|Rupees?|ரூபாய்)\b")
 
-        def repl(m):
+        unit = "ரூபாய்" if self._lang_is_ta() else "rupees"
+
+        def prefix_repl(m):
             amount = int(m.group(1).replace(",", ""))
-            unit = "ரூபாய்" if self._lang_is_ta() else "rupees"
             return f"{numfn(amount)} {unit}"
 
-        return rupee_re.sub(repl, text)
+        def suffix_repl(m):
+            amount = int(m.group(1).replace(",", ""))
+            return f"{numfn(amount)} {unit}"
+
+        text = prefix_re.sub(prefix_repl, text)
+        text = suffix_re.sub(suffix_repl, text)
+        return text
 
     def _expand_numbers(self, text: str) -> str:
         numfn = self._number_fn()
