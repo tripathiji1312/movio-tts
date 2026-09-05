@@ -10,7 +10,6 @@ model_path config options:
 
 import logging
 import sys
-from contextlib import nullcontext
 from pathlib import Path
 from typing import Iterator
 
@@ -277,21 +276,19 @@ class IndicF5Engine:
         eff_speed = speed if speed is not None else self.speed
 
         with torch.inference_mode():
-            ctx = torch.autocast("cuda", dtype=torch.float16) if "cuda" in self._device else nullcontext()
-            with ctx:
-                audio, _, _ = infer_batch_process(
-                    ref_audio_tuple,
-                    ref_text,
-                    [text],
-                    self._model,
-                    self._vocoder,
-                    nfe_step=steps,
-                    cfg_strength=self.cfg_strength,
-                    sway_sampling_coef=self.sway_coef,
-                    speed=eff_speed,
-                    cross_fade_duration=0,
-                    device=self._device,
-                )
+            audio, _, _ = infer_batch_process(
+                ref_audio_tuple,
+                ref_text,
+                [text],
+                self._model,
+                self._vocoder,
+                nfe_step=steps,
+                cfg_strength=self.cfg_strength,
+                sway_sampling_coef=self.sway_coef,
+                speed=eff_speed,
+                cross_fade_duration=0,
+                device=self._device,
+            )
         return np.asarray(audio, dtype=np.float32)
 
     def synthesize(
