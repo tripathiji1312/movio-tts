@@ -284,7 +284,7 @@ class TTSPipeline:
                 return
 
         # Incremental path: one DiT pass per prosodic chunk, yielded as ready.
-        gen = self.engine.synthesize_stream(synth_text, voice_name, min_syl=10, max_syl=24, speed=request.speed)
+        gen = self.engine.synthesize_stream(synth_text, voice_name, min_syl=18, max_syl=40, speed=request.speed)
         samples_per_chunk = max(1, self.sample_rate * self.ws_chunk_ms // 1000)
         first = True
         bufs: list[np.ndarray] = []

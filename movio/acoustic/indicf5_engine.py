@@ -177,6 +177,14 @@ class IndicF5Engine:
             device=device,
         )
         model = model.eval()
+
+        if "cuda" in device:
+            try:
+                model = torch.compile(model, mode="reduce-overhead")
+                logger.info("torch.compile applied (reduce-overhead)")
+            except Exception as e:
+                logger.warning("torch.compile unavailable: %s", e)
+
         vocoder = load_vocoder(vocoder_name="vocos", is_local=False, device=device)
 
         self._model = model
@@ -231,6 +239,25 @@ class IndicF5Engine:
 
     # ── synthesis ────────────────────────────────────────────────────────────
 
+    def _get_ref_tensor(self, voice: VoiceProfile):
+        """Return cached (audio_tensor, sr) for the reference, avoiding disk I/O per chunk."""
+        import torch, torchaudio
+        cache_key = ("_tensor", voice.ref_audio_path)
+        if cache_key not in self._ref_cache:
+            ref_audio_path = voice.ref_audio_path
+            if not ref_audio_path or not Path(ref_audio_path).exists():
+                default_v = self.voices.get(self.default_voice)
+                if default_v and Path(default_v.ref_audio_path).exists():
+                    ref_audio_path = default_v.ref_audio_path
+            audio, sr = torchaudio.load(ref_audio_path)
+            if audio.shape[0] > 1:
+                audio = torch.mean(audio, dim=0, keepdim=True)
+            if sr != self.SAMPLE_RATE:
+                audio = torchaudio.transforms.Resample(sr, self.SAMPLE_RATE)(audio)
+            audio = audio.to(self._device)
+            self._ref_cache[cache_key] = (audio, self.SAMPLE_RATE)
+        return self._ref_cache[cache_key]
+
     def synthesize_chunk(
         self,
         text: str,
@@ -238,27 +265,30 @@ class IndicF5Engine:
         flow_steps: int | None = None,
         speed: float | None = None,
     ) -> np.ndarray:
+        import torch
         self.load()
         self._ensure_indicf5_path()
-        from f5_tts.infer.utils_infer import infer_process
+        from f5_tts.infer.utils_infer import infer_batch_process
 
-        ref_audio, ref_text = self._get_ref_audio(voice)
+        ref_audio_tuple = self._get_ref_tensor(voice)
+        _, ref_text = self._get_ref_audio(voice)
         steps = flow_steps or self.num_flow_steps
         eff_speed = speed if speed is not None else self.speed
 
-        # infer_process returns (audio_np, sample_rate, spectrogram)
-        audio, _, _ = infer_process(
-            ref_audio,
-            ref_text,
-            text,
-            self._model,
-            self._vocoder,
-            device=self._device,
-            nfe_step=steps,
-            sway_sampling_coef=self.sway_coef,
-            cfg_strength=self.cfg_strength,
-            speed=eff_speed,
-        )
+        with torch.inference_mode():
+            audio, _, _ = infer_batch_process(
+                ref_audio_tuple,
+                ref_text,
+                [text],
+                self._model,
+                self._vocoder,
+                nfe_step=steps,
+                cfg_strength=self.cfg_strength,
+                sway_sampling_coef=self.sway_coef,
+                speed=eff_speed,
+                cross_fade_duration=0,
+                device=self._device,
+            )
         return np.asarray(audio, dtype=np.float32)
 
     def synthesize(
@@ -275,54 +305,57 @@ class IndicF5Engine:
         self,
         text: str,
         voice_name: str | None = None,
-        min_syl: int = 10,
-        max_syl: int = 24,
+        min_syl: int = 18,
+        max_syl: int = 40,
         speed: float | None = None,
     ) -> Iterator[np.ndarray]:
         """Yield audio chunks as each prosodic chunk is synthesized.
 
         Trims excessive silence padding from chunk edges so inter-chunk
-        boundaries have a natural, gentle breath pause (~40ms) rather
-        than awkward 1-second silence gaps.
+        boundaries have a natural, gentle breath pause rather than
+        awkward 1-second silence gaps. Uses crossfade between chunks to
+        eliminate boundary artifacts.
         """
         self.load()
         voice = self.get_voice(voice_name)
         chunks = chunk_text(text, min_syl=min_syl, max_syl=max_syl) or [text]
 
-        from movio.utils.audio import trim_silence
+        from movio.utils.audio import trim_silence, crossfade
+
+        import re
+        prev_tail: np.ndarray | None = None
+        xfade_samples = int(0.04 * self.sample_rate)  # 40ms crossfade
 
         for idx, chunk in enumerate(chunks):
             audio = self.synthesize_chunk(chunk, voice, speed=speed)
             if audio is None or len(audio) == 0:
                 continue
 
-            import re
             is_sentence_end = bool(re.search(r"[.!?।]\s*$", chunk))
             is_last = (idx == len(chunks) - 1)
 
-            # Human breath timing:
-            # - Between sentences (. ! ? ।): 240ms natural breath pause
-            # - At clause breaks (, ; :): 130ms gentle pause
-            # - Final chunk: 120ms clean decay
             if is_last:
                 trail_ms = 120.0
             elif is_sentence_end:
-                trail_ms = 240.0
+                trail_ms = 200.0
             else:
-                trail_ms = 130.0
+                trail_ms = 80.0
 
             trimmed = trim_silence(
                 audio,
                 threshold_db=-38.0,
-                min_silence_ms=30.0,
+                min_silence_ms=20.0,
                 trail_silence_ms=trail_ms,
                 sample_rate=self.sample_rate,
             )
             if len(trimmed) > 0:
                 audio = trimmed
 
-            # Apply a brief 5ms micro-fade to eliminate any boundary clicks without softening onset
-            fade_len = int(0.005 * self.sample_rate)
+            if prev_tail is not None and len(audio) > xfade_samples:
+                audio = crossfade(prev_tail, audio, xfade_samples)
+                prev_tail = None
+
+            fade_len = int(0.003 * self.sample_rate)  # 3ms micro-fade
             if len(audio) > 2 * fade_len:
                 audio = audio.copy()
                 ramp_in = np.linspace(0.0, 1.0, fade_len, dtype=np.float32)

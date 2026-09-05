@@ -67,7 +67,7 @@ def split_at_clauses(text: str) -> list[str]:
     return merged
 
 
-def chunk_text(text: str, min_syl: int = 10, max_syl: int = 24) -> list[str]:
+def chunk_text(text: str, min_syl: int = 18, max_syl: int = 40) -> list[str]:
     """Smart prosody-aware chunker for natural streaming TTS.
 
     Principles:

@@ -148,15 +148,25 @@ def convert_char_to_pinyin(text_list, polyphone=True):
             "\u3100" <= c <= "\u9fff"  # common chinese characters
         )
 
+    def is_indic(c):
+        cp = ord(c)
+        return 0x0900 <= cp <= 0x0DFF or 0x0E00 <= cp <= 0x0E7F
+
     for text in text_list:
         char_list = []
         text = text.translate(custom_trans)
         for seg in jieba.cut(text):
             seg_byte_len = len(bytes(seg, "UTF-8"))
             if seg_byte_len == len(seg):  # if pure alphabets and symbols
-                if char_list and seg_byte_len > 1 and char_list[-1] not in " :'\"":
+                if char_list and seg_byte_len > 1 and char_list[-1] not in " :'\"":  
                     char_list.append(" ")
                 char_list.extend(seg)
+            elif any(is_indic(c) for c in seg):
+                for c in seg:
+                    if ord(c) < 256:
+                        char_list.extend(c)
+                    else:
+                        char_list.append(c)
             elif polyphone and seg_byte_len == 3 * len(seg):  # if pure east asian characters
                 seg_ = lazy_pinyin(seg, style=Style.TONE3, tone_sandhi=True)
                 for i, c in enumerate(seg):

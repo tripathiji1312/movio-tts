@@ -1,12 +1,12 @@
-# movio TTS — CPU-first live streaming (IndicF5, 24 kHz)
-# Architecture: Stage A → B → IndicF5Engine (chunked streaming, 12xEuler)
+# movio TTS — GPU-first live streaming (IndicF5, 24 kHz)
+# Architecture: Stage A → B → IndicF5Engine (chunked streaming, 8xEuler)
 # Active runtime is IndicF5Engine (movio/pipeline.py:101); hybrid/MMS
 # modules are retained but unwired. Disk phrase cache (~5ms) is a
 # future optimisation, not on the current hot path.
 #
-# Live-stream profile (CPU-first, GPU-ready by flipping device to "cuda"):
-#   device cpu, num_flow_steps 12, ode euler, sway -1.0, cfg 2.0.
-#   24xMidpoint is ~4x slower — keep 24xEuler for offline phrase_cache only.
+# Live-stream profile (GPU-first, auto-fallback to CPU):
+#   device cuda, num_flow_steps 8, ode euler, sway -1.0, cfg 1.0.
+#   FP16 auto-enabled on GPU. torch.compile with reduce-overhead mode.
 #   ode_method is bound at load (indicf5_engine.py:145-154) — restart after edit.
 #
 # One-time setup:
@@ -53,18 +53,17 @@ stage_c:
     model_id: "facebook/mms-tts-tam"
 
   indicf5:
-    # LIVE runtime profile (CPU-first). indicf5_engine defaults are
-    # 12/euler/-1.0/2.0; YAML wins — keep 12/euler for serving.
+    # LIVE runtime profile (GPU-first). Falls back to CPU if CUDA unavailable.
     # Set model_path to your exported fine-tuned bundle after training, or
     # leave "base" to use ai4bharat/IndicF5.
     # NOTE: ode_method binds at load — restart the server after any change.
     model_path: "base"
-    device: "cpu"
-    num_flow_steps: 16
+    device: "cuda"
+    num_flow_steps: 8
     sway_sampling_coef: -1.0
-    cfg_strength: 2.0
+    cfg_strength: 1.0
     ode_method: "euler"
-    speed: 0.95
+    speed: 1.0
     voices_dir: "config/voices"
     default_voice: "ta_female_neutral"
 
