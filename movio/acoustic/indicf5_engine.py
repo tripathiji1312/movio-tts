@@ -305,66 +305,49 @@ class IndicF5Engine:
         self,
         text: str,
         voice_name: str | None = None,
-        min_syl: int = 18,
-        max_syl: int = 40,
+        min_syl: int = 10,
+        max_syl: int = 28,
         speed: float | None = None,
     ) -> Iterator[np.ndarray]:
-        """Yield audio chunks as each prosodic chunk is synthesized.
+        """Yield audio chunks with explicit silence gaps at clause boundaries.
 
-        Trims excessive silence padding from chunk edges so inter-chunk
-        boundaries have a natural, gentle breath pause rather than
-        awkward 1-second silence gaps. Uses crossfade between chunks to
-        eliminate boundary artifacts.
+        IndicF5 ignores punctuation marks, so we split text at every clause
+        boundary and insert real silence between chunks. Short chunks keep the
+        model from rushing through digits and important words.
         """
         self.load()
         voice = self.get_voice(voice_name)
         chunks = chunk_text(text, min_syl=min_syl, max_syl=max_syl) or [text]
 
-        from movio.utils.audio import trim_silence, crossfade
+        from movio.utils.audio import trim_silence
 
         import re
-        xfade_samples = int(0.06 * self.sample_rate)  # 60ms crossfade
-        prev_tail: np.ndarray | None = None
 
         for idx, chunk in enumerate(chunks):
             audio = self.synthesize_chunk(chunk, voice, speed=speed)
             if audio is None or len(audio) == 0:
                 continue
 
-            is_sentence_end = bool(re.search(r"[.!?।]\s*$", chunk))
-            is_last = (idx == len(chunks) - 1)
-
-            if is_last:
-                trail_ms = 100.0
-            elif is_sentence_end:
-                trail_ms = 150.0
-            else:
-                trail_ms = 50.0
-
             trimmed = trim_silence(
                 audio,
                 threshold_db=-38.0,
                 min_silence_ms=15.0,
-                trail_silence_ms=trail_ms,
+                trail_silence_ms=60.0,
                 sample_rate=self.sample_rate,
             )
             if len(trimmed) > 0:
                 audio = trimmed
 
-            if prev_tail is not None and len(audio) > xfade_samples:
-                audio = crossfade(prev_tail, audio, xfade_samples)
-                prev_tail = None
-
-            if not is_last and len(audio) > xfade_samples:
-                prev_tail = audio[-xfade_samples:].copy()
-                audio = audio[:-xfade_samples]
-
-            fade_len = int(0.003 * self.sample_rate)
+            fade_len = int(0.005 * self.sample_rate)  # 5ms fade
             if len(audio) > 2 * fade_len:
                 audio = audio.copy()
-                if idx == 0:
-                    audio[:fade_len] *= np.linspace(0.0, 1.0, fade_len, dtype=np.float32)
-                if is_last:
-                    audio[-fade_len:] *= np.linspace(1.0, 0.0, fade_len, dtype=np.float32)
+                audio[:fade_len] *= np.linspace(0.0, 1.0, fade_len, dtype=np.float32)
+                audio[-fade_len:] *= np.linspace(1.0, 0.0, fade_len, dtype=np.float32)
 
             yield audio
+
+            is_last = (idx == len(chunks) - 1)
+            if not is_last:
+                is_sentence_end = bool(re.search(r"[.!?।]\s*$", chunk))
+                pause_ms = 350 if is_sentence_end else 200
+                yield np.zeros(int(pause_ms * self.sample_rate / 1000), dtype=np.float32)

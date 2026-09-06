@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 _OVERRIDES: dict[str, str] = {
     # Function words where CMU dict gives wrong vowels for Indian English
-    "a": "எ", "the": "த", "of": "ஆப்", "for": "போர்", "to": "டு",
+    "a": "எ", "the": "த", "of": "ஆஃப்", "for": "ஃபோர்", "to": "டு",
     "our": "அவர்", "your": "யுவர்",
     # Abbreviations / units that need expansion (not transliteration)
     "am": "ஏ எம்", "pm": "பி எம்", "a.m.": "ஏ எம்", "p.m.": "பி எம்",
@@ -27,45 +27,45 @@ _OVERRIDES: dict[str, str] = {
     "km": "கிலோமீட்டர்", "hr": "அவர்", "hrs": "அவர்ஸ்",
     # Words where auto pipeline produces broken output (hiatus, wrong phonemes)
     "hour": "அவர்", "hours": "அவர்ஸ்",
-    "flower": "பிளவர்", "around": "அரவுண்ட்",
+    "flower": "ஃபிளவர்", "around": "அரவுண்ட்",
     "kilometer": "கிலோமீட்டர்", "kilometers": "கிலோமீட்டர்ஸ்",
     "vehicle": "வெஹிக்கிள்", "waiting": "வெயிட்டிங்",
     # Transport domain — conventional Tamil loanword spellings
     "booking": "புக்கிங்", "booked": "புக்டு",
     "airport": "ஏர்போர்ட்", "cab": "கேப்", "taxi": "டாக்சி",
-    "fare": "பேர்", "pickup": "பிக்அப்", "drop": "டிராப்",
-    "driver": "டிரைவர்", "traffic": "டிராபிக்",
+    "fare": "ஃபேர்", "pickup": "பிக்அப்", "drop": "டிராப்",
+    "driver": "டிரைவர்", "traffic": "டிராஃபிக்",
     "signal": "சிக்னல்", "junction": "ஜங்ஷன்",
-    "confirm": "கன்பர்ம்", "confirmed": "கன்பர்ம்டு",
+    "confirm": "கன்ஃபர்ம்", "confirmed": "கன்ஃபர்ம்டு",
     "cancel": "கேன்சல்", "cancelled": "கேன்சல்டு",
     "arrive": "அரைவ்", "arrived": "அரைவ்டு",
     "auto": "ஆட்டோ", "sir": "சார்", "madam": "மேடம்",
     "rupees": "ரூபீஸ்", "rupee": "ரூபீ", "rupaai": "ரூபாய்",
     "cash": "கேஷ்",
     "delay": "டிலே", "delayed": "டிலேட்",
-    "express": "எக்ஸ்பிரஸ்", "platform": "பிளாட்பார்ம்",
-    "flyover": "பிளைஓவர்", "highway": "ஹைவே",
-    "transport": "டிரான்ஸ்போர்ட்", "transfer": "டிரான்ஸ்பர்",
+    "express": "எக்ஸ்பிரஸ்", "platform": "பிளாட்ஃபார்ம்",
+    "flyover": "ஃபிளைஓவர்", "highway": "ஹைவே",
+    "transport": "டிரான்ஸ்போர்ட்", "transfer": "டிரான்ஸ்ஃபர்",
     "via": "வயா", "station": "ஸ்டேஷன்",
     # Brand/service names where both CMU and IndicXlit get it wrong
     "uber": "ஊபர்", "ola": "ஓலா", "rapido": "ராபிடோ",
     # English numbers — consistent pronunciation for digit sequences
     "zero": "ஸீரோ", "one": "வன்", "two": "டூ", "three": "திரீ",
-    "four": "போர்", "five": "பைவ்", "six": "சிக்ஸ்", "seven": "செவன்",
+    "four": "ஃபோர்", "five": "ஃபைவ்", "six": "சிக்ஸ்", "seven": "செவன்",
     "eight": "எயிட்", "nine": "நைன்", "ten": "டென்",
     "eleven": "இலெவன்", "twelve": "டுவெல்வ்", "thirteen": "தர்டீன்",
-    "fourteen": "போர்டீன்", "fifteen": "பிப்டீன்", "sixteen": "சிக்ஸ்டீன்",
+    "fourteen": "ஃபோர்டீன்", "fifteen": "ஃபிஃப்டீன்", "sixteen": "சிக்ஸ்டீன்",
     "seventeen": "செவன்டீன்", "eighteen": "எய்டீன்", "nineteen": "நைன்டீன்",
-    "twenty": "டுவென்டி", "thirty": "தர்டி", "forty": "போர்டி",
-    "fifty": "பிப்டி", "sixty": "சிக்ஸ்டி", "seventy": "செவன்டி",
+    "twenty": "டுவென்டி", "thirty": "தர்டி", "forty": "ஃபோர்டி",
+    "fifty": "ஃபிஃப்டி", "sixty": "சிக்ஸ்டி", "seventy": "செவன்டி",
     "eighty": "எய்டி", "ninety": "நைன்டி",
     "hundred": "ஹன்ட்ரட்", "thousand": "தவுசண்ட்",
 }
 
 # Digits → Tamil loanword forms
 _DIGIT_TAMIL = {
-    "0": "ஸீரோ", "1": "வன்", "2": "டூ", "3": "திரீ", "4": "போர்",
-    "5": "பைவ்", "6": "சிக்ஸ்", "7": "செவன்", "8": "எயிட்", "9": "நைன்",
+    "0": "ஸீரோ", "1": "வன்", "2": "டூ", "3": "திரீ", "4": "ஃபோர்",
+    "5": "ஃபைவ்", "6": "சிக்ஸ்", "7": "செவன்", "8": "எயிட்", "9": "நைன்",
 }
 
 # Tamil number words for time (7:30 → ஏழு முப்பது)
@@ -83,7 +83,7 @@ _TAMIL_NUMS = {
 # Tamil letter names for abbreviations (OTP → ஓ டீ பீ)
 _LETTER_NAMES: dict[str, str] = {
     "A": "ஏ", "B": "பீ", "C": "சீ", "D": "டீ", "E": "ஈ",
-    "F": "எப்", "G": "ஜீ", "H": "எச்", "I": "ஐ", "J": "ஜே",
+    "F": "எஃப்", "G": "ஜீ", "H": "எச்", "I": "ஐ", "J": "ஜே",
     "K": "கே", "L": "எல்", "M": "எம்", "N": "என்", "O": "ஓ",
     "P": "பீ", "Q": "க்யூ", "R": "ஆர்", "S": "எஸ்", "T": "டீ",
     "U": "யூ", "V": "வீ", "W": "டபிள்யூ", "X": "எக்ஸ்",
@@ -227,7 +227,7 @@ _LATIN_WORD_RE = re.compile(r"[A-Za-z]+")
 
 _ARPA_CONSONANT: dict[str, str] = {
     "B": "ப", "CH": "ச", "D": "ட", "DH": "த",
-    "F": "ப", "G": "க", "HH": "ஹ", "JH": "ஜ",
+    "F": "ஃப", "G": "க", "HH": "ஹ", "JH": "ஜ",
     "K": "க", "L": "ல", "M": "ம", "N": "ந",
     "NG": "ங", "P": "ப", "R": "ர", "S": "ஸ",
     "SH": "ஷ", "T": "ட", "TH": "த", "V": "வ",
@@ -431,7 +431,7 @@ def _xlit_transliterate(word: str) -> str | None:
         if results and results[0].hypotheses:
             out_tokens = results[0].hypotheses[0]
             result = "".join(out_tokens)
-            result = result.replace("ஃப", "ப").replace("ஃ", "")
+            result = result.replace("ஃ" + "ஃ", "ஃ")
             return result if result.strip() else None
     except Exception as e:
         logger.debug("IndicXlit failed for %r: %s", word, e)
@@ -495,7 +495,7 @@ def _transliterate_word(word: str) -> str:
 _ALL_DIGIT_WORDS = {
     "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
     "பூஜ்யம்", "ஒன்று", "இரண்டு", "மூன்று", "நான்கு", "ஐந்து", "ஆறு", "ஏழு", "எட்டு", "ஒன்பது",
-    "ஸீரோ", "வன்", "டூ", "திரீ", "போர்", "பைவ்", "சிக்ஸ்", "செவன்", "எயிட்", "நைன்",
+    "ஸீரோ", "வன்", "டூ", "திரீ", "ஃபோர்", "ஃபைவ்", "சிக்ஸ்", "செவன்", "எயிட்", "நைன்",
 }
 
 
