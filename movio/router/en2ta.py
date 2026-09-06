@@ -154,13 +154,10 @@ _SPELLED_PLATE_RE = re.compile(
 
 
 def _format_vehicle_plate(text: str) -> str:
-    """Format license plates with distinct letter pauses and paired numbers.
-
-    e.g. TN82CS1312 -> T - N, eight - two, C - S, one - three, one - two
-    """
+    """Format license plates with period-separated groups for clear TTS pauses."""
     def raw_repl(m):
         state = " ".join(c.upper() for c in m.group(1))
-        rto_digits = " ".join(_DIGIT_WORDS.get(d, d) for d in m.group(2))
+        rto = " ".join(_DIGIT_WORDS.get(d, d) for d in m.group(2))
         series = " ".join(c.upper() for c in m.group(3))
         reg_digits = [_DIGIT_WORDS.get(d, d) for d in m.group(4)]
         reg = f"{reg_digits[0]} {reg_digits[1]}. {reg_digits[2]} {reg_digits[3]}"
@@ -503,15 +500,13 @@ _ALL_DIGIT_WORDS = {
 
 
 def _format_natural_digits(text: str) -> str:
-    """Format consecutive digit sequences into natural human prosodic cadence.
+    """Add period pauses between consecutive digit words for clear TTS output.
 
-    Instead of robotic comma inflections on every single digit (which sounds like
-    a robotic phone tree), this groups numbers into natural human breath units:
-      - 4-digit OTPs: 'four - eight, three - two' (2 pairs with subtle micro-gap and mid pause)
-      - 6-digit codes: '1 - 2, 3 - 4, 5 - 6'
-      - 10-digit phones: '9 - 8, 7 - 6, 5 - 4, 3 - 2, 1 - 0'
-    This gives clear separation between digits (no blurred 'two in three') while
-    sounding fluid, natural, and human.
+    IndicF5 renders dashes/commas unreliably — periods create consistent pauses.
+    Groups digit words into pairs separated by periods:
+      four eight three two → போர் பைவ். திரீ போர்
+    Sequences already containing periods (e.g. license plates from _expand_vehicle)
+    are left alone.
     """
     words = text.split()
     if not words:
@@ -529,7 +524,7 @@ def _format_natural_digits(text: str) -> str:
             while j < len(words):
                 next_w = words[j]
                 next_clean = next_w.strip(punct_chars).lower()
-                if bool(re.search(r"[,;:!?.।]$", run[-1])):
+                if bool(re.search(r"[.;:!?।]$", run[-1])):
                     break
                 if next_clean in _ALL_DIGIT_WORDS or next_clean.isdigit():
                     run.append(next_w)
@@ -537,32 +532,19 @@ def _format_natural_digits(text: str) -> str:
                 else:
                     break
 
-            if len(run) == 1:
-                out.append(run[0])
-            elif len(run) == 4:
-                d1 = run[0].strip(punct_chars)
-                d2 = run[1].strip(punct_chars)
-                d3 = run[2].strip(punct_chars)
-                d4 = run[3].rstrip(punct_chars)
-                trail_punct = run[3][len(d4):]
-                out.append(f"{d1} - {d2}, {d3} - {d4}{trail_punct}")
-            elif len(run) == 6:
-                d1 = run[0].strip(punct_chars)
-                d2 = run[1].strip(punct_chars)
-                d3 = run[2].strip(punct_chars)
-                d4 = run[3].strip(punct_chars)
-                d5 = run[4].strip(punct_chars)
-                d6 = run[5].rstrip(punct_chars)
-                trail_punct = run[5][len(d6):]
-                out.append(f"{d1} - {d2}, {d3} - {d4}, {d5} - {d6}{trail_punct}")
+            if len(run) <= 2:
+                out.extend(run)
             else:
-                parts = []
                 for k in range(0, len(run), 2):
                     pair = run[k:k+2]
-                    clean_pair = [p.strip(punct_chars) for p in pair]
-                    parts.append(" - ".join(clean_pair))
-                last_punct = run[-1][len(run[-1].rstrip(punct_chars)):]
-                out.append(", ".join(parts) + last_punct)
+                    stripped = [p.strip(punct_chars) for p in pair]
+                    group = " ".join(stripped)
+                    if k + 2 < len(run):
+                        group += "."
+                    else:
+                        trail = run[-1][len(run[-1].rstrip(punct_chars)):]
+                        group += trail
+                    out.append(group)
             i = j
         else:
             out.append(w)
