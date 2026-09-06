@@ -191,6 +191,10 @@ class DomainRuleEngine:
             explicit_pm = suffix.startswith("P")
             explicit_am = suffix.startswith("A")
             if explicit_am or explicit_pm:
+                if self._lang_is_ta():
+                    period = "காலை" if explicit_am else ("மாலை" if h12(h) < 8 else "இரவு")
+                    minute_part = f" {numfn(mi)}" if mi else ""
+                    return f"{period} {numfn(h12(h))}{minute_part}"
                 period = "AM" if explicit_am else "PM"
                 minute_part = f" {english_number(mi)}" if mi else ""
                 return f"{english_number(h12(h))}{minute_part} {period}"
@@ -277,11 +281,13 @@ class DomainRuleEngine:
         return PHONE_RE.sub(repl, text)
 
     def _expand_vehicle(self, text: str) -> str:
+        numfn = self._number_fn()
+
         def _spell_vehicle(m) -> str:
             state = " ".join(c.upper() for c in m.group(1) if c.isalpha())
-            rto = " ".join(english_number(int(d)) for d in m.group(2) if d.isdigit())
+            rto = " ".join(numfn(int(d)) for d in m.group(2) if d.isdigit())
             series = " ".join(c.upper() for c in m.group(3) if c.isalpha())
-            reg_digits = [english_number(int(d)) for d in m.group(4) if d.isdigit()]
+            reg_digits = [numfn(int(d)) for d in m.group(4) if d.isdigit()]
             reg = f"{reg_digits[0]} {reg_digits[1]}. {reg_digits[2]} {reg_digits[3]}"
             return f"{state}. {rto}. {series}. {reg}"
 

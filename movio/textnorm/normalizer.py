@@ -111,8 +111,7 @@ class TextNormalizer:
             if nemo_out:
                 cleaned, backend = nemo_out, "nemo"
 
-        engine = self.domain_engine if lang == self.wfst_language else DomainRuleEngine(language=lang)
-        cleaned = engine.normalize(cleaned)
+        cleaned = self.domain_engine.normalize(cleaned)
         cleaned = self._expand_abbreviations(cleaned)
 
         return NormalizationResult(text=cleaned, backend_used=backend)
