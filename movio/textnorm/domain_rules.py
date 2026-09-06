@@ -196,13 +196,13 @@ class DomainRuleEngine:
                 return f"{english_number(h12(h))}{minute_part} {period}"
             if self._lang_is_ta():
                 period = "காலை" if h < 12 else "மதியம்" if h < 16 else "மாலை" if h < 20 else "இரவு"
-                minute_part = f" {numfn(mi)} நிமிடம்" if mi else ""
-                # Check if the period word already precedes the time in the text
+                minute_part = f" {numfn(mi)}" if mi else ""
                 start = m.start()
-                prefix = text[max(0, start - 10):start]
-                if period in prefix:
-                    return f"{numfn(h12(h))} மணி{minute_part}"
-                return f"{period} {numfn(h12(h))} மணி{minute_part}"
+                prefix = text[max(0, start - 15):start]
+                has_period = any(p in prefix for p in ("காலை", "மதியம்", "மாலை", "இரவு"))
+                if has_period:
+                    return f"{numfn(h12(h))}{minute_part}"
+                return f"{period} {numfn(h12(h))}{minute_part}"
             minute_part = f" {numfn(mi)}" if mi else ""
             period = "AM" if h < 12 else "PM"
             return f"{numfn(h12(h))}{minute_part} {period}"
@@ -277,16 +277,18 @@ class DomainRuleEngine:
         return PHONE_RE.sub(repl, text)
 
     def _expand_vehicle(self, text: str) -> str:
-        def _spell_vehicle(token: str) -> str:
-            parts = []
-            for ch in token:
-                if ch.isalpha():
-                    parts.append(ch.upper())
-                elif ch.isdigit():
-                    parts.append(english_number(int(ch)))
-            return " ".join(parts)
+        def _spell_vehicle(m) -> str:
+            state = " ".join(c.upper() for c in m.group(1) if c.isalpha())
+            rto = " ".join(english_number(int(d)) for d in m.group(2) if d.isdigit())
+            series = " ".join(c.upper() for c in m.group(3) if c.isalpha())
+            reg_digits = [english_number(int(d)) for d in m.group(4) if d.isdigit()]
+            reg = f"{reg_digits[0]} {reg_digits[1]}. {reg_digits[2]} {reg_digits[3]}"
+            return f"{state}. {rto}. {series}. {reg}"
 
-        return VEHICLE_RE.sub(lambda m: _spell_vehicle(re.sub(r"[\s-]", "", m.group(1))), text)
+        plate_re = re.compile(
+            r"\b([A-Za-z]{2})[\s-]?(\d{1,2})[\s-]?([A-Za-z]{1,3})[\s-]?(\d{4})\b"
+        )
+        return plate_re.sub(_spell_vehicle, text)
 
     def _expand_currency(self, text: str) -> str:
         numfn = self._number_fn()

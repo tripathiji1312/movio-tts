@@ -33,7 +33,7 @@ _OVERRIDES: dict[str, str] = {
     # Transport domain — conventional Tamil loanword spellings
     "booking": "புக்கிங்", "booked": "புக்டு",
     "airport": "ஏர்போர்ட்", "cab": "கேப்", "taxi": "டாக்சி",
-    "fare": "பேர்", "pickup": "பிக்அப்", "drop": "டிராப்",
+    "fare": "கட்டணம்", "pickup": "பிக்அப்", "drop": "டிராப்",
     "driver": "டிரைவர்", "traffic": "டிராபிக்",
     "signal": "சிக்னல்", "junction": "ஜங்ஷன்",
     "confirm": "கன்பர்ம்", "confirmed": "கன்பர்ம்டு",
@@ -83,7 +83,7 @@ _TAMIL_NUMS = {
 # Tamil letter names for abbreviations (OTP → ஓ டீ பீ)
 _LETTER_NAMES: dict[str, str] = {
     "A": "ஏ", "B": "பீ", "C": "சீ", "D": "டீ", "E": "ஈ",
-    "F": "எஃப்", "G": "ஜீ", "H": "எச்", "I": "ஐ", "J": "ஜே",
+    "F": "எப்", "G": "ஜீ", "H": "எச்", "I": "ஐ", "J": "ஜே",
     "K": "கே", "L": "எல்", "M": "எம்", "N": "என்", "O": "ஓ",
     "P": "பீ", "Q": "க்யூ", "R": "ஆர்", "S": "எஸ்", "T": "டீ",
     "U": "யூ", "V": "வீ", "W": "டபிள்யூ", "X": "எக்ஸ்",
@@ -159,23 +159,22 @@ def _format_vehicle_plate(text: str) -> str:
     e.g. TN82CS1312 -> T - N, eight - two, C - S, one - three, one - two
     """
     def raw_repl(m):
-        state = " - ".join(c.upper() for c in m.group(1))
-        rto_digits = [_DIGIT_WORDS.get(d, d) for d in m.group(2)]
-        rto = " - ".join(rto_digits)
-        series = " - ".join(c.upper() for c in m.group(3))
+        state = " ".join(c.upper() for c in m.group(1))
+        rto_digits = " ".join(_DIGIT_WORDS.get(d, d) for d in m.group(2))
+        series = " ".join(c.upper() for c in m.group(3))
         reg_digits = [_DIGIT_WORDS.get(d, d) for d in m.group(4)]
-        reg = f"{reg_digits[0]} - {reg_digits[1]}, {reg_digits[2]} - {reg_digits[3]}"
-        return f"{state}, {rto}, {series}, {reg}"
+        reg = f"{reg_digits[0]} {reg_digits[1]}. {reg_digits[2]} {reg_digits[3]}"
+        return f"{state}. {rto}. {series}. {reg}"
 
     text = _RAW_PLATE_RE.sub(raw_repl, text)
 
     def spelled_repl(m):
-        state = f"{m.group(1).upper()} - {m.group(2).upper()}"
-        rto = " - ".join(m.group(3).split())
-        series = " - ".join(c.upper() for c in m.group(4).split())
+        state = f"{m.group(1).upper()} {m.group(2).upper()}"
+        rto = " ".join(m.group(3).split())
+        series = " ".join(c.upper() for c in m.group(4).split())
         reg_words = m.group(5).split()
-        reg = f"{reg_words[0]} - {reg_words[1]}, {reg_words[2]} - {reg_words[3]}"
-        return f"{state}, {rto}, {series}, {reg}"
+        reg = f"{reg_words[0]} {reg_words[1]}. {reg_words[2]} {reg_words[3]}"
+        return f"{state}. {rto}. {series}. {reg}"
 
     text = _SPELLED_PLATE_RE.sub(spelled_repl, text)
     return text
