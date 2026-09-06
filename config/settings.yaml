@@ -1,11 +1,11 @@
 # movio TTS — GPU-first live streaming (IndicF5, 24 kHz)
-# Architecture: Stage A → B → IndicF5Engine (chunked streaming, 8xEuler)
+# Architecture: Stage A → B → IndicF5Engine (chunked streaming, 12xEuler)
 # Active runtime is IndicF5Engine (movio/pipeline.py:101); hybrid/MMS
 # modules are retained but unwired. Disk phrase cache (~5ms) is a
 # future optimisation, not on the current hot path.
 #
 # Live-stream profile (GPU-first, auto-fallback to CPU):
-#   device cuda, num_flow_steps 8, ode euler, sway -1.0, cfg 1.0.
+#   device cuda, num_flow_steps 12, ode euler, sway -1.0, cfg 1.0.
 #   FP16 auto-enabled on GPU. torch.compile with reduce-overhead mode.
 #   ode_method is bound at load (indicf5_engine.py:145-154) — restart after edit.
 #
@@ -59,7 +59,7 @@ stage_c:
     # NOTE: ode_method binds at load — restart the server after any change.
     model_path: "base"
     device: "cuda"
-    num_flow_steps: 8
+    num_flow_steps: 12
     sway_sampling_coef: -1.0
     cfg_strength: 1.0
     ode_method: "euler"

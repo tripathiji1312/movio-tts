@@ -323,8 +323,8 @@ class IndicF5Engine:
         from movio.utils.audio import trim_silence, crossfade
 
         import re
+        xfade_samples = int(0.06 * self.sample_rate)  # 60ms crossfade
         prev_tail: np.ndarray | None = None
-        xfade_samples = int(0.04 * self.sample_rate)  # 40ms crossfade
 
         for idx, chunk in enumerate(chunks):
             audio = self.synthesize_chunk(chunk, voice, speed=speed)
@@ -335,16 +335,16 @@ class IndicF5Engine:
             is_last = (idx == len(chunks) - 1)
 
             if is_last:
-                trail_ms = 120.0
+                trail_ms = 100.0
             elif is_sentence_end:
-                trail_ms = 200.0
+                trail_ms = 150.0
             else:
-                trail_ms = 80.0
+                trail_ms = 50.0
 
             trimmed = trim_silence(
                 audio,
                 threshold_db=-38.0,
-                min_silence_ms=20.0,
+                min_silence_ms=15.0,
                 trail_silence_ms=trail_ms,
                 sample_rate=self.sample_rate,
             )
@@ -355,12 +355,16 @@ class IndicF5Engine:
                 audio = crossfade(prev_tail, audio, xfade_samples)
                 prev_tail = None
 
-            fade_len = int(0.003 * self.sample_rate)  # 3ms micro-fade
+            if not is_last and len(audio) > xfade_samples:
+                prev_tail = audio[-xfade_samples:].copy()
+                audio = audio[:-xfade_samples]
+
+            fade_len = int(0.003 * self.sample_rate)
             if len(audio) > 2 * fade_len:
                 audio = audio.copy()
-                ramp_in = np.linspace(0.0, 1.0, fade_len, dtype=np.float32)
-                ramp_out = np.linspace(1.0, 0.0, fade_len, dtype=np.float32)
-                audio[:fade_len] *= ramp_in
-                audio[-fade_len:] *= ramp_out
+                if idx == 0:
+                    audio[:fade_len] *= np.linspace(0.0, 1.0, fade_len, dtype=np.float32)
+                if is_last:
+                    audio[-fade_len:] *= np.linspace(1.0, 0.0, fade_len, dtype=np.float32)
 
             yield audio

@@ -280,8 +280,8 @@ class DomainRuleEngine:
             rto = " ".join(numfn(int(d)) for d in m.group(2) if d.isdigit())
             series = " ".join(c.upper() for c in m.group(3) if c.isalpha())
             reg_digits = [numfn(int(d)) for d in m.group(4) if d.isdigit()]
-            reg = f"{reg_digits[0]} {reg_digits[1]}. {reg_digits[2]} {reg_digits[3]}"
-            return f"{state}. {rto}. {series}. {reg}"
+            reg = f"{reg_digits[0]} {reg_digits[1]}, {reg_digits[2]} {reg_digits[3]}"
+            return f"{state}, {rto}, {series}, {reg}"
 
         plate_re = re.compile(
             r"\b([A-Za-z]{2})[\s-]?(\d{1,2})[\s-]?([A-Za-z]{1,3})[\s-]?(\d{4})\b"
@@ -290,8 +290,8 @@ class DomainRuleEngine:
 
     def _expand_currency(self, text: str) -> str:
         numfn = self._number_fn()
-        # Prefix form: ₹350, Rs.350, Rs 350, ரூ350
-        prefix_re = re.compile(r"(?:₹|Rs\.?|ரூ)\s?(\d+(?:,\d+)*)")
+        # Prefix form: ₹350, Rs.350, Rs 350, ரூ350 (optionally followed by rupees/ரூபாய்)
+        prefix_re = re.compile(r"(?:₹|Rs\.?|ரூ)\s?(\d+(?:,\d+)*)(?:\s+(?:rupees?|Rupees?|ரூபாய்))?")
         # Suffix form: 350 rupees, 350 Rupees, 350 ரூபாய்
         suffix_re = re.compile(r"\b(\d+(?:,\d+)*)\s+(?:rupees?|Rupees?|ரூபாய்)\b")
 

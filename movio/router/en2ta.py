@@ -160,8 +160,8 @@ def _format_vehicle_plate(text: str) -> str:
         rto = " ".join(_DIGIT_WORDS.get(d, d) for d in m.group(2))
         series = " ".join(c.upper() for c in m.group(3))
         reg_digits = [_DIGIT_WORDS.get(d, d) for d in m.group(4)]
-        reg = f"{reg_digits[0]} {reg_digits[1]}. {reg_digits[2]} {reg_digits[3]}"
-        return f"{state}. {rto}. {series}. {reg}"
+        reg = f"{reg_digits[0]} {reg_digits[1]}, {reg_digits[2]} {reg_digits[3]}"
+        return f"{state}, {rto}, {series}, {reg}"
 
     text = _RAW_PLATE_RE.sub(raw_repl, text)
 
@@ -170,8 +170,8 @@ def _format_vehicle_plate(text: str) -> str:
         rto = " ".join(m.group(3).split())
         series = " ".join(c.upper() for c in m.group(4).split())
         reg_words = m.group(5).split()
-        reg = f"{reg_words[0]} {reg_words[1]}. {reg_words[2]} {reg_words[3]}"
-        return f"{state}. {rto}. {series}. {reg}"
+        reg = f"{reg_words[0]} {reg_words[1]}, {reg_words[2]} {reg_words[3]}"
+        return f"{state}, {rto}, {series}, {reg}"
 
     text = _SPELLED_PLATE_RE.sub(spelled_repl, text)
     return text
@@ -500,13 +500,10 @@ _ALL_DIGIT_WORDS = {
 
 
 def _format_natural_digits(text: str) -> str:
-    """Add period pauses between consecutive digit words for clear TTS output.
+    """Group consecutive digit words into pairs with comma pauses.
 
-    IndicF5 renders dashes/commas unreliably — periods create consistent pauses.
-    Groups digit words into pairs separated by periods:
-      four eight three two → போர் பைவ். திரீ போர்
-    Sequences already containing periods (e.g. license plates from _expand_vehicle)
-    are left alone.
+    Commas give IndicF5 a light breath pause without triggering chunk splits
+    (periods cause the chunker to break mid-sequence, creating laggy gaps).
     """
     words = text.split()
     if not words:
@@ -540,7 +537,7 @@ def _format_natural_digits(text: str) -> str:
                     stripped = [p.strip(punct_chars) for p in pair]
                     group = " ".join(stripped)
                     if k + 2 < len(run):
-                        group += "."
+                        group += ","
                     else:
                         trail = run[-1][len(run[-1].rstrip(punct_chars)):]
                         group += trail
