@@ -33,7 +33,7 @@ _OVERRIDES: dict[str, str] = {
     # Transport domain — conventional Tamil loanword spellings
     "booking": "புக்கிங்", "booked": "புக்டு",
     "airport": "ஏர்போர்ட்", "cab": "கேப்", "taxi": "டாக்சி",
-    "fare": "கட்டணம்", "pickup": "பிக்அப்", "drop": "டிராப்",
+    "fare": "பேர்", "pickup": "பிக்அப்", "drop": "டிராப்",
     "driver": "டிரைவர்", "traffic": "டிராபிக்",
     "signal": "சிக்னல்", "junction": "ஜங்ஷன்",
     "confirm": "கன்பர்ம்", "confirmed": "கன்பர்ம்டு",

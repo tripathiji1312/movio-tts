@@ -191,23 +191,15 @@ class DomainRuleEngine:
             explicit_pm = suffix.startswith("P")
             explicit_am = suffix.startswith("A")
             if explicit_am or explicit_pm:
-                if self._lang_is_ta():
-                    period = "காலை" if explicit_am else ("மாலை" if h12(h) < 8 else "இரவு")
-                    minute_part = f" {numfn(mi)}" if mi else ""
-                    return f"{period} {numfn(h12(h))}{minute_part}"
                 period = "AM" if explicit_am else "PM"
-                minute_part = f" {english_number(mi)}" if mi else ""
-                return f"{english_number(h12(h))}{minute_part} {period}"
-            if self._lang_is_ta():
-                period = "காலை" if h < 12 else "மதியம்" if h < 16 else "மாலை" if h < 20 else "இரவு"
                 minute_part = f" {numfn(mi)}" if mi else ""
-                start = m.start()
-                prefix = text[max(0, start - 15):start]
-                has_period = any(p in prefix for p in ("காலை", "மதியம்", "மாலை", "இரவு"))
-                if has_period:
-                    return f"{numfn(h12(h))}{minute_part}"
-                return f"{period} {numfn(h12(h))}{minute_part}"
+                return f"{numfn(h12(h))}{minute_part} {period}"
             minute_part = f" {numfn(mi)}" if mi else ""
+            start = m.start()
+            prefix = text[max(0, start - 15):start]
+            has_period = any(p in prefix for p in ("காலை", "மதியம்", "மாலை", "இரவு"))
+            if has_period:
+                return f"{numfn(h12(h))}{minute_part}"
             period = "AM" if h < 12 else "PM"
             return f"{numfn(h12(h))}{minute_part} {period}"
 
