@@ -31,6 +31,7 @@ _OVERRIDES: dict[str, str] = {
     "kilometer": "கிலோமீட்டர்", "kilometers": "கிலோமீட்டர்ஸ்",
     "vehicle": "வெஹிக்கிள்", "waiting": "வெயிட்டிங்",
     # Transport domain — conventional Tamil loanword spellings
+    # Rule: max ONE ஃப per word. Second F in same word stays as plain ப.
     "booking": "புக்கிங்", "booked": "புக்டு",
     "airport": "ஏர்போர்ட்", "cab": "கேப்", "taxi": "டாக்சி",
     "fare": "ஃபேர்", "pickup": "பிக்அப்", "drop": "டிராப்",
@@ -50,22 +51,23 @@ _OVERRIDES: dict[str, str] = {
     # Brand/service names where both CMU and IndicXlit get it wrong
     "uber": "ஊபர்", "ola": "ஓலா", "rapido": "ராபிடோ",
     # English numbers — consistent pronunciation for digit sequences
+    # ஃப for word-initial F; second F in same word stays ப (no double ஃ)
     "zero": "ஸீரோ", "one": "வன்", "two": "டூ", "three": "திரீ",
     "four": "ஃபோர்", "five": "ஃபைவ்", "six": "சிக்ஸ்", "seven": "செவன்",
     "eight": "எயிட்", "nine": "நைன்", "ten": "டென்",
     "eleven": "இலெவன்", "twelve": "டுவெல்வ்", "thirteen": "தர்டீன்",
-    "fourteen": "ஃபோர்டீன்", "fifteen": "ஃபிஃப்டீன்", "sixteen": "சிக்ஸ்டீன்",
+    "fourteen": "ஃபோர்டீன்", "fifteen": "ஃபிப்டீன்", "sixteen": "சிக்ஸ்டீன்",
     "seventeen": "செவன்டீன்", "eighteen": "எய்டீன்", "nineteen": "நைன்டீன்",
     "twenty": "டுவென்டி", "thirty": "தர்டி", "forty": "ஃபோர்டி",
-    "fifty": "ஃபிஃப்டி", "sixty": "சிக்ஸ்டி", "seventy": "செவன்டி",
+    "fifty": "ஃபிப்டி", "sixty": "சிக்ஸ்டி", "seventy": "செவன்டி",
     "eighty": "எய்டி", "ninety": "நைன்டி",
     "hundred": "ஹன்ட்ரட்", "thousand": "தவுசண்ட்",
 }
 
 # Digits → Tamil loanword forms
 _DIGIT_TAMIL = {
-    "0": "ஸீரோ", "1": "வன்", "2": "டூ", "3": "திரீ", "4": "ஃபோர்",
-    "5": "ஃபைவ்", "6": "சிக்ஸ்", "7": "செவன்", "8": "எயிட்", "9": "நைன்",
+    "0": "ஸீரோ", "1": "வன்", "2": "டூ", "3": "திரீ", "4": "போர்",
+    "5": "பைவ்", "6": "சிக்ஸ்", "7": "செவன்", "8": "எயிட்", "9": "நைன்",
 }
 
 # Tamil number words for time (7:30 → ஏழு முப்பது)
@@ -362,6 +364,14 @@ def _arpabet_to_tamil(phones: list[str]) -> str:
     return _break_clusters(raw)
 
 
+def _limit_one_aytham(text: str) -> str:
+    """Keep only the first ஃ in a word — double ஃ garbles IndicF5 output."""
+    first = text.find("ஃ")
+    if first == -1:
+        return text
+    return text[:first + 1] + text[first + 1:].replace("ஃப", "ப").replace("ஃ", "")
+
+
 def _cmu_transliterate(word: str) -> str | None:
     cmu = _get_cmu()
     if cmu is None:
@@ -370,7 +380,9 @@ def _cmu_transliterate(word: str) -> str | None:
     if not phones:
         return None
     result = _arpabet_to_tamil(phones[0])
-    return result if result.strip() else None
+    if not result or not result.strip():
+        return None
+    return _limit_one_aytham(result)
 
 
 # ── Tier 3: IndicXlit via CTranslate2 ───────────────────────────────────────
@@ -431,8 +443,7 @@ def _xlit_transliterate(word: str) -> str | None:
         if results and results[0].hypotheses:
             out_tokens = results[0].hypotheses[0]
             result = "".join(out_tokens)
-            result = result.replace("ஃ" + "ஃ", "ஃ")
-            return result if result.strip() else None
+            return _limit_one_aytham(result) if result.strip() else None
     except Exception as e:
         logger.debug("IndicXlit failed for %r: %s", word, e)
     return None
@@ -495,7 +506,8 @@ def _transliterate_word(word: str) -> str:
 _ALL_DIGIT_WORDS = {
     "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
     "பூஜ்யம்", "ஒன்று", "இரண்டு", "மூன்று", "நான்கு", "ஐந்து", "ஆறு", "ஏழு", "எட்டு", "ஒன்பது",
-    "ஸீரோ", "வன்", "டூ", "திரீ", "ஃபோர்", "ஃபைவ்", "சிக்ஸ்", "செவன்", "எயிட்", "நைன்",
+    "ஸீரோ", "வன்", "டூ", "திரீ", "போர்", "பைவ்", "ஃபோர்", "ஃபைவ்",
+    "சிக்ஸ்", "செவன்", "எயிட்", "நைன்",
 }
 
 

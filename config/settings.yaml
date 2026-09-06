@@ -63,7 +63,7 @@ stage_c:
     sway_sampling_coef: -1.0
     cfg_strength: 1.0
     ode_method: "euler"
-    speed: 0.9
+    speed: 0.95
     voices_dir: "config/voices"
     default_voice: "ta_female_neutral"
 
